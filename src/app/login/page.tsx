@@ -15,7 +15,7 @@ export default function LoginPage() {
 
     useEffect(() => {
         if (user?.isAuthenticated) {
-            router.push('/intervous/dashboard/');
+            router.push('/dashboard/');
         }
     }, [user, router]);
 
@@ -24,7 +24,7 @@ export default function LoginPage() {
         setLoading(true);
         try {
             await signIn(email, password);
-            router.push('/intervous/dashboard/');
+            router.push('/dashboard/');
         } catch (error: unknown) {
             if (error instanceof Error) {
                 setErrorMsg(error.message);

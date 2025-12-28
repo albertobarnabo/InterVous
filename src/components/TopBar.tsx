@@ -20,7 +20,7 @@ export default function TopBar({ keys }: TopBarProps) {
 
     const handleLogout = async () => {
         await signOut();
-        router.push('/intervous/login');
+        router.push('/login');
     };
 
     return (
