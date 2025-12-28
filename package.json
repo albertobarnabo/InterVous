@@ -1,0 +1,43 @@
+{
+  "name": "intervous",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "postinstall": "flowbite-react patch"
+  },
+  "dependencies": {
+    "@headlessui/react": "^2.2.4",
+    "@mistralai/mistralai": "^1.6.1",
+    "@supabase/ssr": "^0.6.1",
+    "@supabase/supabase-js": "^2.49.7",
+    "axios": "^1.9.0",
+    "cheerio": "^1.0.0",
+    "flowbite-react": "^0.11.7",
+    "heroicons": "^2.2.0",
+    "lucide-react": "^0.511.0",
+    "next": "15.3.2",
+    "openai": "^4.102.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-icons": "^5.5.0",
+    "uuid": "^11.1.0"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "autoprefixer": "^10.4.21",
+    "daisyui": "^5.0.35",
+    "eslint": "^9",
+    "eslint-config-next": "15.3.2",
+    "postcss": "^8.5.3",
+    "tailwindcss": "^4.1.7",
+    "typescript": "^5"
+  }
+}
