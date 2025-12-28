@@ -55,6 +55,7 @@ export async function POST(request: Request) {
                 break;
             case "mistral":
                 jobFields = await extractFieldsWithMistral(jobText, keys.mistral)
+                break;
             default:
                 return NextResponse.json(
                     { error: `The model "${model}" does not exist or it's not supported` },
