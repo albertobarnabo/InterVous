@@ -1,10 +1,8 @@
 'use client';
 
-import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../contexts/AuthContext';
 import { User } from 'lucide-react';
-import Logo from '../../public/intervous_logo.png';
 import { useState } from 'react';
 import KeysPanel from './KeysPanel';
 import { ApiKeys } from '../../lib/types';

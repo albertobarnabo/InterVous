@@ -63,7 +63,7 @@ export default function DashboardPage() {
         } catch (error) {
             console.log("Error retrieving jobs", error);
         }
-    }, [user?.id]);
+    }, [user, user?.id]);
 
     const fetchKeys = useCallback(async () => {
         if (!user) return;
@@ -73,7 +73,7 @@ export default function DashboardPage() {
         } catch (error) {
             console.log("Error retrieving api keys", error);
         }
-    }, [user?.id]);
+    }, [user, user?.id]);
 
     useEffect(() => {
         if (!user) {
