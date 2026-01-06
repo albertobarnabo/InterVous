@@ -80,8 +80,8 @@ export default function AddJobPanel({ onClose, model, keys }: AddJobPanelProps) 
                                 <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4" /></svg>
                             </div>
                             <div>
-                                <h2 className="text-3xl font-black text-slate-900 tracking-tight leading-tight">Start New Voyage</h2>
-                                <p className="text-slate-500 font-medium text-sm mt-1">Let AI extract the details while you focus on the prep.</p>
+                                <h2 className="text-3xl font-black text-slate-900 tracking-tight leading-tight">Add New Job</h2>
+                                <p className="text-slate-500 font-medium text-sm mt-1">Paste the link of the job application to proceed</p>
                             </div>
                         </div>
                     </header>
@@ -125,14 +125,14 @@ export default function AddJobPanel({ onClose, model, keys }: AddJobPanelProps) 
                         <div className="flex gap-4 pt-6">
                             <button
                                 onClick={onClose}
-                                className="flex-1 bg-slate-100 text-slate-500 px-8 py-5 rounded-[1.8rem] font-black text-xs uppercase tracking-[0.2em] hover:bg-slate-200 transition-all active:scale-95"
+                                className="cursor-pointer flex-1 bg-slate-100 text-slate-500 px-8 py-5 rounded-[1.8rem] font-black text-xs uppercase tracking-[0.2em] hover:bg-slate-200 transition-all active:scale-95"
                             >
                                 Not Now
                             </button>
                             <button
                                 onClick={handleSubmit}
                                 disabled={loading || !url}
-                                className="flex-[2] bg-gradient-to-br from-blue-600 via-blue-500 to-indigo-600 text-white px-8 py-5 rounded-[1.8rem] font-black text-xs uppercase tracking-[0.2em] shadow-[0_15px_30px_rgba(37,99,235,0.25)] hover:shadow-[0_20px_40px_rgba(37,99,235,0.35)] transition-all transform hover:-translate-y-1 active:scale-95 flex items-center justify-center gap-3 min-w-[200px]"
+                                className="cursor-pointer flex-[2] bg-gradient-to-br from-blue-600 via-blue-500 to-indigo-600 text-white px-8 py-5 rounded-[1.8rem] font-black text-xs uppercase tracking-[0.2em] shadow-[0_15px_30px_rgba(37,99,235,0.25)] hover:shadow-[0_20px_40px_rgba(37,99,235,0.35)] transition-all transform hover:-translate-y-1 active:scale-95 flex items-center justify-center gap-3 min-w-[200px]"
                             >
                                 {loading ? (
                                     <>
@@ -140,12 +140,12 @@ export default function AddJobPanel({ onClose, model, keys }: AddJobPanelProps) 
                                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                         </svg>
-                                        <span>Summoning AI...</span>
+                                        <span>Extracting...</span>
                                     </>
                                 ) : (
                                     <>
                                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                                        <span>Extract Mission</span>
+                                        <span>Extract Job Details</span>
                                     </>
                                 )}
                             </button>

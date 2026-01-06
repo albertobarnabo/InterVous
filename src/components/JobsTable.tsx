@@ -2,43 +2,19 @@
 
 import { useState, useMemo } from "react";
 import { JobEntry } from "../../lib/types";
-import EditJobPanel from "./EditJobPanel";
-import { deleteJob, updateJob } from "../../lib/jobService";
-import { useAuth } from "../../contexts/AuthContext";
 
 interface JobsTableProps {
     jobs: JobEntry[];
     fetchJobs: () => void;
+    onEditJob: (job: JobEntry) => void;
 }
 
 const ITEMS_PER_PAGE = 8;
 
-export default function JobsTable({ jobs, fetchJobs }: JobsTableProps) {
-    const [selectedJob, setSelectedJob] = useState<JobEntry | null>(null);
+export default function JobsTable({ jobs, fetchJobs, onEditJob }: JobsTableProps) {
     const [currentPage, setCurrentPage] = useState(1);
     const [sortField, setSortField] = useState<'status' | 'application_date' | 'location' | null>(null);
     const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
-    const { user } = useAuth();
-
-    const handleSave = async (updatedJob: JobEntry) => {
-        try {
-            await updateJob(updatedJob, user.id);
-            setSelectedJob(null);
-            fetchJobs();
-        } catch (error) {
-            console.error("Failed to update job:", error);
-        }
-    };
-
-    const handleDelete = async (id: number) => {
-        try {
-            await deleteJob(id, user.id);
-            setSelectedJob(null);
-            fetchJobs();
-        } catch (error) {
-            console.error("Failed to delete job:", error);
-        }
-    };
 
     const handleSort = (field: 'status' | 'application_date' | 'location') => {
         if (sortField === field) {
@@ -167,7 +143,7 @@ export default function JobsTable({ jobs, fetchJobs }: JobsTableProps) {
                                     </td>
                                     <td className="px-10 py-7 text-right" onClick={(e) => e.stopPropagation()}>
                                         <button
-                                            onClick={() => setSelectedJob(job)}
+                                            onClick={() => onEditJob(job)}
                                             className="p-3 text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 rounded-2xl transition-all duration-300 group/btn"
                                         >
                                             <svg className="w-5 h-5 group-hover/btn:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
@@ -226,7 +202,7 @@ export default function JobsTable({ jobs, fetchJobs }: JobsTableProps) {
                                     <span className="text-sm font-black text-blue-600 bg-blue-50 px-4 py-1.5 rounded-xl border border-blue-100">{job.stage}</span>
                                 </div>
                                 <button
-                                    onClick={(e) => { e.stopPropagation(); setSelectedJob(job); }}
+                                    onClick={(e) => { e.stopPropagation(); onEditJob(job); }}
                                     className="px-6 py-3 bg-slate-900 text-white font-black text-[10px] uppercase tracking-widest rounded-2xl hover:bg-black transition-colors shadow-lg shadow-slate-200"
                                 >
                                     Modify
@@ -273,19 +249,6 @@ export default function JobsTable({ jobs, fetchJobs }: JobsTableProps) {
                         </button>
                     </div>
                 </div>
-            )}
-
-            {/* Edit panel */}
-            {selectedJob && (
-                <>
-                    <div className="fixed inset-0 backdrop-blur-2xl bg-slate-900/40 z-50 animate-in fade-in duration-500" />
-                    <EditJobPanel
-                        job={selectedJob}
-                        onClose={() => setSelectedJob(null)}
-                        onSave={handleSave}
-                        onDelete={handleDelete}
-                    />
-                </>
             )}
         </div>
     );

@@ -67,7 +67,7 @@ export default function LoginPage() {
                     </div>
 
                     <div className="space-y-2">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2rem] ml-2">Security Key</label>
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2rem] ml-2">Password</label>
                         <input
                             type="password"
                             placeholder="••••••••••••"
@@ -93,7 +93,7 @@ export default function LoginPage() {
                             </>
                         ) : (
                             <>
-                                <span>Commence Mission</span>
+                                <span>Log In</span>
                                 <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
                             </>
                         )}
@@ -108,12 +108,6 @@ export default function LoginPage() {
                         </div>
                     )}
                 </form>
-
-                <div className="mt-12 text-center">
-                    <p className="text-[9px] font-black text-slate-300 uppercase tracking-[0.4rem] italic">
-                        Secured by InterVous Core
-                    </p>
-                </div>
             </div>
         </div>
     );

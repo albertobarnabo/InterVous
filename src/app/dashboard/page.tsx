@@ -4,12 +4,13 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState, useCallback } from 'react';
 
 import TopBar from '@/components/TopBar';
+import EditJobPanel from '@/components/EditJobPanel';
 import JobsTable from '@/components/JobsTable';
 import AddJobPanel from '@/components/AddJobPanel';
 
 import { useAuth } from '../../../contexts/AuthContext';
 
-import { getJobsByUser } from '../../../lib/jobService';
+import { getJobsByUser, updateJob, deleteJob } from '../../../lib/jobService';
 import { getKeysByUser } from '../../../lib/keyService';
 
 import { ApiKeys, JobEntry } from '../../../lib/types';
@@ -48,6 +49,29 @@ export default function DashboardPage() {
 
     // Panels
     const [showAddPanel, setShowAddPanel] = useState(false);
+    const [editingJob, setEditingJob] = useState<JobEntry | null>(null);
+
+    const handleUpdateJob = async (updatedJob: JobEntry) => {
+        if (!user) return;
+        try {
+            await updateJob(updatedJob, user.id);
+            setEditingJob(null);
+            fetchJobs();
+        } catch (error) {
+            console.error("Failed to update job:", error);
+        }
+    };
+
+    const handleDeleteJob = async (id: number) => {
+        if (!user) return;
+        try {
+            await deleteJob(id, user.id);
+            setEditingJob(null);
+            fetchJobs();
+        } catch (error) {
+            console.error("Failed to delete job:", error);
+        }
+    };
 
     const [searchQuery, setSearchQuery] = useState('');
 
@@ -98,15 +122,11 @@ export default function DashboardPage() {
                 {/* Header Section */}
                 <div className="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-6">
                     <div>
-                        <div className="inline-block px-4 py-1.5 rounded-full bg-blue-100 text-blue-700 text-[10px] font-black uppercase tracking-widest mb-3 shadow-sm shadow-blue-100 border border-blue-200">
-                            Candidate Portal
-                        </div>
                         <h1 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight leading-tight">
-                            Track your next <br />
-                            <span className="bg-gradient-to-r from-blue-600 via-indigo-500 to-cyan-500 bg-clip-text text-transparent">Career Move</span>
+                            Track your next <span className="bg-gradient-to-r from-blue-600 via-indigo-500 to-cyan-500 bg-clip-text text-transparent">Career Move</span>
                         </h1>
                         <p className="text-slate-500 mt-4 text-lg max-w-lg font-medium">
-                            Keep all your job applications organized and get clear insights into your search progress.
+                            Keep all your job applications organized and add new jobs quickly.
                         </p>
                     </div>
 
@@ -185,7 +205,7 @@ export default function DashboardPage() {
                 </div>
 
                 <div className="bg-white/40 rounded-[3rem] shadow-[0_30px_60px_-15px_rgba(0,0,0,0.06)] border border-white/50 overflow-hidden min-h-[500px] backdrop-blur-xl">
-                    <JobsTable jobs={filteredJobs} fetchJobs={fetchJobs} />
+                    <JobsTable jobs={filteredJobs} fetchJobs={fetchJobs} onEditJob={setEditingJob} />
                 </div>
             </main>
 
@@ -199,6 +219,18 @@ export default function DashboardPage() {
                         }}
                         model={selectedModel}
                         keys={keys}
+                    />
+                </>
+            )}
+
+            {editingJob && (
+                <>
+                    <div className="fixed inset-0 backdrop-blur-2xl bg-slate-900/40 z-50 animate-in fade-in duration-500" />
+                    <EditJobPanel
+                        job={editingJob}
+                        onClose={() => setEditingJob(null)}
+                        onSave={handleUpdateJob}
+                        onDelete={handleDeleteJob}
                     />
                 </>
             )}

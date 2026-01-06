@@ -1,7 +1,7 @@
 // components/EditJobPanel.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { JobEntry } from '../../lib/types';
 
 interface EditJobPanelProps {
@@ -18,6 +18,14 @@ type FormField = keyof Pick<JobEntry,
 export default function EditJobPanel({ job, onClose, onSave, onDelete }: EditJobPanelProps) {
     const [formData, setFormData] = useState({ ...job });
 
+    useEffect(() => {
+        // Lock body scroll when panel is open
+        document.body.style.overflow = 'hidden';
+        return () => {
+            document.body.style.overflow = 'unset';
+        };
+    }, []);
+
     function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
@@ -25,7 +33,7 @@ export default function EditJobPanel({ job, onClose, onSave, onDelete }: EditJob
 
     return (
         <div className="fixed inset-0 z-[60] overflow-y-auto bg-slate-900/20 backdrop-blur-sm">
-            <div className="flex min-h-full items-center justify-center p-4 md:p-6 text-center">
+            <div className="flex min-h-full items-start justify-center p-4 md:p-6 pt-32 text-center">
                 <div className="w-full max-w-2xl backdrop-blur-3xl bg-white/95 rounded-[2.5rem] md:rounded-[3.5rem] shadow-[0_40px_100px_rgba(37,99,235,0.15)] border border-white p-7 md:p-12 relative overflow-hidden animate-in zoom-in-95 duration-300 text-left">
                     {/* Decorative background accents */}
                     <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-100/50 rounded-full blur-[80px] -mr-20 -mt-20 -z-10" />
@@ -33,11 +41,7 @@ export default function EditJobPanel({ job, onClose, onSave, onDelete }: EditJob
 
                 <div className="relative z-10">
                     <header className="mb-10 text-center">
-                        <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-50 rounded-[1.5rem] text-blue-600 mb-4 shadow-inner">
-                            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                        </div>
-                        <h2 className="text-3xl font-black text-slate-900 tracking-tight leading-tight">Master Record</h2>
-                        <p className="text-slate-500 font-medium text-sm mt-1">Refine the details of your professional pursuit.</p>
+                        <h2 className="text-3xl font-black text-slate-900 tracking-tight leading-tight">Edit Job</h2>
                     </header>
 
                     <div className="max-h-[45vh] overflow-y-auto px-2 space-y-6 custom-scrollbar mb-10">
@@ -51,21 +55,24 @@ export default function EditJobPanel({ job, onClose, onSave, onDelete }: EditJob
                                     </label>
 
                                     {field === "status" ? (
-                                        <div className="relative">
-                                            <select
-                                                name={key}
-                                                value={formData[field] ?? ''}
-                                                onChange={handleChange}
-                                                className="w-full bg-slate-50 border border-slate-100 rounded-[1.5rem] px-6 py-4 text-sm font-bold text-slate-700 focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:bg-white focus:border-blue-400 appearance-none cursor-pointer transition-all"
-                                            >
-                                                <option value="Active">Active</option>
-                                                <option value="Not Applied">Not Applied</option>
-                                                <option value="Inactive">Inactive</option>
-                                            </select>
-                                            <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" /></svg>
-                                            </div>
-                                        </div>
+                                        <CustomSelect
+                                            value={formData[field] ?? ''}
+                                            options={["Active", "Not Applied", "Inactive"]}
+                                            onChange={(val) => setFormData(prev => ({ ...prev, [key]: val }))}
+                                        />
+                                    ) : field === "stage" ? (
+                                        <CustomSelect
+                                            value={formData[field] ?? ''}
+                                            options={[
+                                                "Screening",
+                                                "Coding Assessment",
+                                                "Video Interview",
+                                                "HR Interview",
+                                                "Technical Interview",
+                                                "Final Round"
+                                            ]}
+                                            onChange={(val) => setFormData(prev => ({ ...prev, [key]: val }))}
+                                        />
                                     ) : (
                                         <input
                                             type="text"
@@ -107,6 +114,55 @@ export default function EditJobPanel({ job, onClose, onSave, onDelete }: EditJob
                     </div>
                 </div>
             </div>
+        </div>
+    );
+}
+
+function CustomSelect({ value, options, onChange }: { value: string, options: string[], onChange: (val: string) => void }) {
+    const [isOpen, setIsOpen] = useState(false);
+
+    return (
+        <div className="relative">
+            <button
+                type="button"
+                onClick={() => setIsOpen(!isOpen)}
+                className="cursor-pointer w-full bg-slate-50 border border-slate-100 rounded-[1.5rem] px-6 py-4 text-sm font-bold text-slate-700 focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:bg-white focus:border-blue-400 text-left flex justify-between items-center transition-all bg-white"
+            >
+                <span className="truncate">{value || "Select..."}</span>
+                <svg className={`w-5 h-5 text-slate-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
+                </svg>
+            </button>
+            
+            {isOpen && (
+                <>
+                    <div 
+                        className="fixed inset-0 z-30" 
+                        onClick={() => setIsOpen(false)} 
+                    />
+                    <div className="cursor-pointer absolute z-40 w-full mt-2 bg-white rounded-[1.5rem] border border-slate-100 shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                        <div className="cursor-pointer max-h-60 overflow-y-auto custom-scrollbar p-2">
+                            {options.map((option) => (
+                                <button
+                                    key={option}
+                                    type="button"
+                                    onClick={() => {
+                                        onChange(option);
+                                        setIsOpen(false);
+                                    }}
+                                    className={`cursor-pointer w-full text-left px-4 py-3 rounded-xl text-sm font-bold transition-all ${
+                                        value === option 
+                                            ? 'bg-blue-50 text-blue-600' 
+                                            : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                                    }`}
+                                >
+                                    {option}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </>
+            )}
         </div>
     );
 }
