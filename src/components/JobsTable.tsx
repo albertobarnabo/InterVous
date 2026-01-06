@@ -5,13 +5,12 @@ import { JobEntry } from "../../lib/types";
 
 interface JobsTableProps {
     jobs: JobEntry[];
-    fetchJobs: () => void;
     onEditJob: (job: JobEntry) => void;
 }
 
 const ITEMS_PER_PAGE = 8;
 
-export default function JobsTable({ jobs, fetchJobs, onEditJob }: JobsTableProps) {
+export default function JobsTable({ jobs, onEditJob }: JobsTableProps) {
     const [currentPage, setCurrentPage] = useState(1);
     const [sortField, setSortField] = useState<'status' | 'application_date' | 'location' | null>(null);
     const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');

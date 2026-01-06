@@ -87,7 +87,7 @@ export default function DashboardPage() {
         } catch (error) {
             console.log("Error retrieving jobs", error);
         }
-    }, [user, user?.id]);
+    }, [user]);
 
     const fetchKeys = useCallback(async () => {
         if (!user) return;
@@ -97,7 +97,7 @@ export default function DashboardPage() {
         } catch (error) {
             console.log("Error retrieving api keys", error);
         }
-    }, [user, user?.id]);
+    }, [user]);
 
     useEffect(() => {
         if (!user) {
@@ -205,7 +205,7 @@ export default function DashboardPage() {
                 </div>
 
                 <div className="bg-white/40 rounded-[3rem] shadow-[0_30px_60px_-15px_rgba(0,0,0,0.06)] border border-white/50 overflow-hidden min-h-[500px] backdrop-blur-xl">
-                    <JobsTable jobs={filteredJobs} fetchJobs={fetchJobs} onEditJob={setEditingJob} />
+                    <JobsTable jobs={filteredJobs} onEditJob={setEditingJob} />
                 </div>
             </main>
 
