@@ -16,3 +16,27 @@ export type ApiKeys = {
     deep_seek: string;
     mistral: string;
 }
+
+export type Company = {
+    id: string;
+    name: string;
+    website: string | null;
+    logo_url: string | null;
+    created_by: string;
+};
+
+export type CompanyTag = {
+    id: string;
+    name: string;
+    description: string | null;
+};
+
+export type CompanyTagMap = {
+    company_id: string;
+    tag_id: string;
+    created_by: string;
+};
+
+export type CompanyWithTags = Company & {
+    tags: CompanyTag[];
+};
