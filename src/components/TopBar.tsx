@@ -1,6 +1,6 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '../../contexts/AuthContext';
 import { User } from 'lucide-react';
 import { useState } from 'react';
@@ -13,6 +13,7 @@ interface TopBarProps {
 
 export default function TopBar({ keys }: TopBarProps) {
     const router = useRouter();
+    const pathname = usePathname();
     const { user, signOut } = useAuth();
 
     const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -48,13 +49,13 @@ export default function TopBar({ keys }: TopBarProps) {
                     <button
                         onClick={() => router.push('/companies')}
                         className={`cursor-pointer hidden md:flex items-center gap-3 text-sm font-black transition-all group ${
-                            window.location.pathname.startsWith('/companies') 
+                            pathname?.startsWith('/companies') 
                             ? 'text-blue-600' 
                             : 'text-slate-500 hover:text-slate-800'
                         }`}
                     >
                         <div className={`p-2.5 rounded-2xl transition-all ${
-                            window.location.pathname.startsWith('/companies')
+                            pathname?.startsWith('/companies')
                             ? 'bg-blue-50 text-blue-600 shadow-sm'
                             : 'bg-transparent group-hover:bg-slate-50'
                         }`}>
