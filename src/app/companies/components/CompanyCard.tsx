@@ -25,6 +25,7 @@ const CompanyCard: React.FC<CompanyCardProps> = ({ company, onEdit }) => {
                 <div className="flex items-center gap-6">
                     {company.logo_url ? (
                         <div className="w-20 h-20 rounded-2xl overflow-hidden bg-white shadow-lg shadow-blue-900/5 p-3 flex items-center justify-center ring-1 ring-black/5">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img src={company.logo_url} alt={`${company.name} logo`} className="w-full h-full object-contain" />
                         </div>
                     ) : (

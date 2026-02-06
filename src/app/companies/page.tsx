@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useRouter } from 'next/navigation';
+
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import TopBar from '@/components/TopBar';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -14,7 +14,7 @@ import { Listbox, ListboxButton, ListboxOption, ListboxOptions } from '@headless
 
 export default function CompaniesPage() {
     const { user } = useAuth();
-    const router = useRouter();
+
     const [companies, setCompanies] = useState<CompanyWithTags[]>([]);
     const [allTags, setAllTags] = useState<CompanyTag[]>([]);
     const [keys, setKeys] = useState<ApiKeys | null>(null);
@@ -99,7 +99,7 @@ export default function CompaniesPage() {
                             Global <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600">Companies</span>
                         </h1>
                         <p className="text-slate-600 text-xl max-w-2xl font-medium leading-relaxed">
-                            Explore and manage your organization's global database with style and precision.
+                            Explore and manage your organization&apos;s global database with style and precision.
                         </p>
                     </div>
 

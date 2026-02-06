@@ -126,7 +126,7 @@ function CustomSelect({ value, options, onChange }: { value: string, options: st
             <button
                 type="button"
                 onClick={() => setIsOpen(!isOpen)}
-                className="cursor-pointer w-full bg-slate-50/50 border border-slate-200/60 rounded-[1.5rem] px-6 py-4 text-sm font-black text-slate-800 focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:bg-white focus:border-blue-500/50 text-left flex justify-between items-center transition-all bg-white shadow-sm"
+                className="cursor-pointer w-full bg-slate-50/50 border border-slate-200/60 rounded-[1.5rem] px-6 py-4 text-sm font-black text-slate-800 focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:bg-white focus:border-blue-500/50 text-left flex justify-between items-center transition-all shadow-sm"
             >
                 <span className="truncate">{value || "Select..."}</span>
                 <svg className={`w-5 h-5 text-slate-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">

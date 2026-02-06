@@ -159,7 +159,7 @@ export default function AddCompanyModal({ onClose, onSuccess, initialData }: Add
                                                     <ListboxOption
                                                         key={tag.id}
                                                         value={tag.id}
-                                                        className={({ active, selected }) =>
+                                                        className={({ active }) =>
                                                             `cursor-pointer px-8 py-3.5 flex items-center justify-between text-sm font-bold transition-all ${active ? 'bg-blue-50 text-blue-700' : 'text-slate-600'}`
                                                         }
                                                     >
