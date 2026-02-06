@@ -60,26 +60,26 @@ export default function JobsTable({ jobs, onEditJob }: JobsTableProps) {
             {/* Desktop Table View */}
             <div className="hidden md:block overflow-x-auto overflow-y-visible">
                 <table className="w-full text-sm text-left text-slate-600 table-auto border-separate border-spacing-0">
-                    <thead className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] bg-white/50 sticky top-0 z-10">
+                    <thead className="text-xs font-black text-slate-700 uppercase tracking-widest bg-white/30 backdrop-blur-xl sticky top-0 z-10 border-b border-white/20 shadow-sm">
                         <tr>
-                            <th className="px-10 py-6 border-b border-slate-100">Company & Role</th>
-                            <th className="px-6 py-6 border-b border-slate-100 cursor-pointer hover:text-blue-600 transition-colors" onClick={() => handleSort('location')}>
+                            <th className="px-10 py-6 border-b border-white/10">Company & Role</th>
+                            <th className="px-6 py-6 border-b border-white/10 cursor-pointer hover:text-blue-600 transition-colors" onClick={() => handleSort('location')}>
                                 <div className="flex items-center gap-2">
                                     Location {renderSortSymbol('location')}
                                 </div>
                             </th>
-                            <th className="px-6 py-6 border-b border-slate-100 cursor-pointer hover:text-blue-600 transition-colors" onClick={() => handleSort('application_date')}>
+                            <th className="px-6 py-6 border-b border-white/10 cursor-pointer hover:text-blue-600 transition-colors" onClick={() => handleSort('application_date')}>
                                 <div className="flex items-center gap-2 text-nowrap">
                                     Applied On {renderSortSymbol('application_date')}
                                 </div>
                             </th>
-                            <th className="px-6 py-6 border-b border-slate-100 cursor-pointer hover:text-blue-600 transition-colors" onClick={() => handleSort('status')}>
+                            <th className="px-6 py-6 border-b border-white/10 cursor-pointer hover:text-blue-600 transition-colors" onClick={() => handleSort('status')}>
                                 <div className="flex items-center gap-2">
                                     Status {renderSortSymbol('status')}
                                 </div>
                             </th>
-                            <th className="px-6 py-6 border-b border-slate-100">Stage</th>
-                            <th className="px-10 py-6 border-b border-slate-100 text-right font-black">Manage</th>
+                            <th className="px-6 py-6 border-b border-white/10">Stage</th>
+                            <th className="px-10 py-6 border-b border-white/10 text-right font-black">Manage</th>
                         </tr>
                     </thead>
                     <tbody className="bg-transparent">
@@ -101,7 +101,7 @@ export default function JobsTable({ jobs, onEditJob }: JobsTableProps) {
                             currentJobs.map((job) => (
                                 <tr
                                     key={job.id}
-                                    className="group hover:bg-white transition-all duration-300 cursor-pointer relative"
+                                    className="group hover:bg-white/40 hover:backdrop-blur-md hover:shadow-lg transition-all duration-300 cursor-pointer relative"
                                     onClick={() => window.open(job.url, '_blank')}
                                 >
                                     <td className="px-10 py-7 relative">
@@ -109,21 +109,21 @@ export default function JobsTable({ jobs, onEditJob }: JobsTableProps) {
                                         <div className={`absolute left-0 top-1/2 -translate-y-1/2 w-1 h-3/5 rounded-r-full transition-all duration-300 opacity-30 group-hover:opacity-100 ${job.status === 'Active' ? 'bg-emerald-500 scale-y-125' : job.status === 'Inactive' ? 'bg-rose-500' : 'bg-slate-400'}`} />
                                         
                                         <div className="flex flex-col">
-                                            <span className="text-lg font-black text-slate-900 group-hover:text-blue-600 transition-colors tracking-tight">{job.company_name}</span>
-                                            <span className="text-xs font-bold text-slate-400 mt-1 flex items-center gap-2">
-                                                <div className="w-1.5 h-1.5 rounded-full bg-slate-200" />
+                                            <span className="text-lg font-black text-slate-900 group-hover:text-blue-700 transition-colors tracking-tight">{job.company_name}</span>
+                                            <span className="text-xs font-bold text-slate-600 mt-1 flex items-center gap-2">
+                                                <div className="w-1.5 h-1.5 rounded-full bg-slate-300" />
                                                 {job.role}
                                             </span>
                                         </div>
                                     </td>
                                     <td className="px-6 py-7">
-                                        <div className="flex items-center gap-2 text-slate-700 font-bold">
-                                            <svg className="w-4 h-4 text-blue-400/60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                        <div className="flex items-center gap-2 text-slate-800 font-bold">
+                                            <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                                             {job.location}
                                         </div>
                                     </td>
                                     <td className="px-6 py-7">
-                                        <div className="flex items-center gap-2 text-indigo-600/70 font-black text-[11px] uppercase tracking-wider">
+                                        <div className="flex items-center gap-2 text-indigo-900/80 font-black text-[11px] uppercase tracking-wider">
                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                                             {job.application_date ?? "-"}
                                         </div>
@@ -165,7 +165,7 @@ export default function JobsTable({ jobs, onEditJob }: JobsTableProps) {
                     currentJobs.map((job) => (
                         <div
                             key={job.id}
-                            className={`bg-white rounded-[2.2rem] p-8 border border-slate-100 shadow-[0_10px_30px_rgba(0,0,0,0.02)] active:scale-[0.97] transition-all relative overflow-hidden`}
+                            className={`bg-white/60 backdrop-blur-xl rounded-[2.2rem] p-8 border border-white/40 shadow-xl active:scale-[0.97] transition-all relative overflow-hidden`}
                             onClick={() => window.open(job.url, '_blank')}
                         >
                             {/* Card accent bar */}
@@ -214,8 +214,8 @@ export default function JobsTable({ jobs, onEditJob }: JobsTableProps) {
 
             {/* Pagination Controls */}
             {sortedJobs.length > ITEMS_PER_PAGE && (
-                <div className="flex items-center justify-between px-10 py-8 border-t border-slate-50 bg-white/30 backdrop-blur-md">
-                    <p className="hidden sm:block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
+                <div className="flex items-center justify-between px-10 py-8 border-t border-white/20 bg-white/10 backdrop-blur-xl">
+                    <p className="hidden sm:block text-[10px] font-black text-slate-600 uppercase tracking-[0.2em]">
                         Voyage {currentPage} of {totalPages}
                     </p>
                     <div className="flex gap-3 w-full sm:w-auto justify-center">
