@@ -172,55 +172,55 @@ export default function JobsTable({ jobs, onEditJob }: JobsTableProps) {
                     </div>
 
                     {/* Mobile Cards View */}
-                    <div className="md:hidden space-y-5 p-5">
+                    <div className="md:hidden space-y-3 p-3">
                         {jobs.length === 0 ? (
-                            <div className="backdrop-blur-xl bg-white/50 rounded-[2rem] p-16 text-center border border-white/50 shadow-sm">
-                                <p className="text-slate-700 font-black italic tracking-tight drop-shadow-sm">No adventures found yet.</p>
+                            <div className="backdrop-blur-xl bg-white/50 rounded-2xl p-8 text-center border border-white/50 shadow-sm">
+                                <p className="text-slate-700 font-black italic tracking-tight drop-shadow-sm text-sm">No adventures found yet.</p>
                             </div>
                         ) : (
                             currentJobs.map((job) => (
                                 <div
                                     key={job.id}
-                                    className={`backdrop-blur-xl bg-white/60 rounded-[2rem] p-8 border border-white/50 shadow-xl active:scale-[0.97] transition-all relative overflow-hidden`}
+                                    className={`backdrop-blur-xl bg-white/60 rounded-2xl p-4 border border-white/50 shadow-xl active:scale-[0.97] transition-all relative overflow-hidden`}
                                     onClick={() => window.open(job.url, '_blank')}
                                 >
                                     {/* Card accent bar */}
-                                    <div className={`absolute left-0 top-0 bottom-0 w-2 ${job.status?.toLowerCase() === 'active' ? 'bg-emerald-500' : (job.status?.toLowerCase() === 'inactive' || job.status?.toLowerCase() === 'rejected' || job.status?.toLowerCase() === 'closed') ? 'bg-rose-500' : 'bg-slate-300'}`} />
+                                    <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${job.status?.toLowerCase() === 'active' ? 'bg-emerald-500' : (job.status?.toLowerCase() === 'inactive' || job.status?.toLowerCase() === 'rejected' || job.status?.toLowerCase() === 'closed') ? 'bg-rose-500' : 'bg-slate-300'}`} />
                                     
-                                    <div className="flex justify-between items-start mb-6">
-                                        <div>
-                                            <h3 className="text-2xl font-black text-slate-900 tracking-tight leading-tight drop-shadow-sm">{job.company_name}</h3>
-                                            <p className="text-xs font-black text-slate-700 uppercase tracking-[0.2em] mt-2 backdrop-blur-md bg-white/60 inline-block px-3 py-1 rounded-full border border-white/50">{job.role}</p>
+                                    <div className="flex justify-between items-start mb-3 gap-2">
+                                        <div className="flex-1 min-w-0">
+                                            <h3 className="text-lg font-black text-slate-900 tracking-tight leading-tight drop-shadow-sm truncate">{job.company_name}</h3>
+                                            <p className="text-[10px] font-black text-slate-700 uppercase tracking-wider mt-1.5 backdrop-blur-md bg-white/60 inline-block px-2 py-0.5 rounded-full border border-white/50">{job.role}</p>
                                         </div>
-                                        <span className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] border self-start whitespace-nowrap ${getStatusStyle(job.status)}`}>
+                                        <span className={`px-2.5 py-1 rounded-lg text-[8px] font-black uppercase tracking-wider border self-start whitespace-nowrap flex-shrink-0 ${getStatusStyle(job.status)}`}>
                                             {job.status}
                                         </span>
                                     </div>
                                     
-                                    <div className="grid grid-cols-2 gap-4 py-5 border-y border-white/30 my-6">
+                                    <div className="grid grid-cols-2 gap-3 py-3 border-y border-white/30 my-3">
                                         <div>
-                                            <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-2 drop-shadow-sm">Location</p>
-                                            <p className="text-sm font-black text-slate-900 flex items-center gap-1.5 drop-shadow-sm">
-                                                <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />
-                                                {job.location}
+                                            <p className="text-[8px] font-black text-slate-600 uppercase tracking-wider mb-1 drop-shadow-sm">Location</p>
+                                            <p className="text-xs font-bold text-slate-900 flex items-center gap-1 drop-shadow-sm truncate">
+                                                <div className="w-1 h-1 rounded-full bg-blue-400 flex-shrink-0" />
+                                                <span className="truncate">{job.location}</span>
                                             </p>
                                         </div>
                                         <div>
-                                            <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-2 drop-shadow-sm">Applied On</p>
-                                            <p className="text-sm font-black text-slate-900 drop-shadow-sm">{job.application_date ?? "-"}</p>
+                                            <p className="text-[8px] font-black text-slate-600 uppercase tracking-wider mb-1 drop-shadow-sm">Applied On</p>
+                                            <p className="text-xs font-bold text-slate-900 drop-shadow-sm">{job.application_date ?? "-"}</p>
                                         </div>
                                     </div>
 
-                                    <div className="flex justify-between items-center pt-2">
-                                        <div className="flex items-center gap-2.5">
-                                            <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest drop-shadow-sm">Stage</span>
-                                            <span className="text-sm font-black text-blue-900 backdrop-blur-md bg-blue-400/30 px-4 py-1.5 rounded-xl border border-blue-500/30">{job.stage}</span>
+                                    <div className="flex justify-between items-center pt-1 gap-2">
+                                        <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                                            <span className="text-[8px] font-black text-slate-600 uppercase tracking-wider drop-shadow-sm flex-shrink-0">Stage</span>
+                                            <span className="text-xs font-black text-blue-900 backdrop-blur-md bg-blue-400/30 px-2.5 py-1 rounded-lg border border-blue-500/30 truncate">{job.stage}</span>
                                         </div>
                                         <button
                                             onClick={(e) => { e.stopPropagation(); onEditJob(job); }}
-                                            className="px-6 py-3 backdrop-blur-md bg-slate-900/80 text-white font-black text-[10px] uppercase tracking-widest rounded-2xl hover:bg-slate-900 transition-colors shadow-lg border border-white/20"
+                                            className="px-4 py-2 backdrop-blur-md bg-slate-900/80 text-white font-black text-[9px] uppercase tracking-wider rounded-xl hover:bg-slate-900 transition-colors shadow-lg border border-white/20 flex-shrink-0"
                                         >
-                                            Modify
+                                            Edit
                                         </button>
                                     </div>
                                 </div>
