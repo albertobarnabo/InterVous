@@ -33,24 +33,24 @@ export default function EditJobPanel({ job, onClose, onSave, onDelete }: EditJob
 
     return (
         <div className="fixed inset-0 z-[60] overflow-y-auto bg-slate-900/20 backdrop-blur-md">
-            <div className="flex min-h-full items-start justify-center p-4 md:p-6 pt-24 text-center">
-                <div className="w-full max-w-2xl glass-panel !bg-white/90 relative animate-in zoom-in-95 duration-300 text-left rounded-[3.5rem] shadow-2xl">
+            <div className="flex min-h-full items-start justify-center p-4 md:p-6 pt-20 md:pt-24 text-center">
+                <div className="w-full max-w-2xl glass-panel !bg-white/90 relative animate-in zoom-in-95 duration-300 text-left rounded-[2.5rem] md:rounded-[3.5rem] shadow-2xl">
                     {/* Decorative background accents */}
                     <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-400/10 rounded-full blur-[80px] -mr-20 -mt-20 -z-10" />
                     <div className="absolute bottom-0 left-0 w-48 h-48 bg-blue-400/10 rounded-full blur-[60px] -ml-10 -mb-10 -z-10" />
 
-                <div className="relative z-10 p-2">
-                    <header className="mb-8 text-center">
-                        <h2 className="text-3xl font-black text-slate-900 tracking-tight leading-tight">Edit Job</h2>
+                <div className="relative z-10 p-6 md:p-8">
+                    <header className="mb-6 md:mb-8 text-center">
+                        <h2 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight leading-tight">Edit Job</h2>
                     </header>
 
-                    <div className="max-h-[55vh] overflow-y-auto px-4 -mx-2 space-y-6 custom-scrollbar mb-10 pb-4">
+                    <div className="max-h-[60vh] overflow-y-auto px-2 md:px-4 -mx-2 space-y-4 md:space-y-6 custom-scrollbar mb-8 md:mb-10 pb-4">
                         {["company_name", "role", "location", "application_date", "status", "stage", "url"].map((field) => {
                             const key = field as FormField;
 
                             return (
                                 <div key={field} className="space-y-2 group">
-                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-3 group-focus-within:text-blue-600 transition-colors">
+                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2 md:ml-3 group-focus-within:text-blue-600 transition-colors">
                                         {field.replace(/_/g, ' ')}
                                     </label>
 
@@ -79,7 +79,7 @@ export default function EditJobPanel({ job, onClose, onSave, onDelete }: EditJob
                                             name={field}
                                             value={formData[key] ?? ''}
                                             onChange={handleChange}
-                                            className="w-full bg-slate-50/50 border border-slate-200/60 rounded-[1.5rem] px-6 py-4 text-sm font-black text-slate-800 focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:bg-white focus:border-blue-500/50 transition-all placeholder:text-slate-300 shadow-sm"
+                                            className="w-full bg-slate-50/50 border border-slate-200/60 rounded-[1.5rem] px-5 py-3 md:px-6 md:py-4 text-xs md:text-sm font-black text-slate-800 focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:bg-white focus:border-blue-500/50 transition-all placeholder:text-slate-300 shadow-sm"
                                             placeholder={`Enter ${field.replace(/_/g, ' ')}...`}
                                         />
                                     )}
@@ -88,23 +88,23 @@ export default function EditJobPanel({ job, onClose, onSave, onDelete }: EditJob
                         })}
                     </div>
 
-                    <div className="flex flex-col sm:flex-row justify-between items-center gap-6">
+                    <div className="flex flex-col sm:flex-row justify-between items-center gap-4 md:gap-6">
                         <button
-                            className="cursor-pointer w-full sm:w-auto px-8 py-4 text-[10px] font-black text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-2xl transition-all duration-300 uppercase tracking-[0.2em] border border-transparent hover:border-rose-100"
+                            className="cursor-pointer w-full sm:w-auto px-6 py-3 md:px-8 md:py-4 text-[10px] font-black text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl md:rounded-2xl transition-all duration-300 uppercase tracking-[0.2em] border border-transparent hover:border-rose-100"
                             onClick={() => onDelete(job ? job.id : 0)}
                         >
                             Delete Position
                         </button>
                         
-                        <div className="flex gap-4 w-full sm:w-auto">
+                        <div className="flex gap-3 md:gap-4 w-full sm:w-auto">
                             <button
-                                className="cursor-pointer flex-1 sm:flex-none bg-slate-100 text-slate-500 px-8 py-4 rounded-[1.5rem] font-black text-[10px] uppercase tracking-[0.2em] hover:bg-slate-200 transition-all active:scale-95"
+                                className="cursor-pointer flex-1 sm:flex-none bg-slate-100 text-slate-500 px-6 py-3 md:px-8 md:py-4 rounded-[1.5rem] font-black text-[10px] uppercase tracking-[0.2em] hover:bg-slate-200 transition-all active:scale-95"
                                 onClick={onClose}
                             >
                                 Cancel
                             </button>
                             <button
-                                className="cursor-pointer flex-[2] sm:flex-none bg-gradient-to-br from-blue-600 via-blue-500 to-indigo-600 text-white px-10 py-4 rounded-[1.5rem] font-black text-[10px] uppercase tracking-[0.2em] shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 transition-all transform hover:-translate-y-1 active:scale-95 whitespace-nowrap"
+                                className="cursor-pointer flex-[2] sm:flex-none bg-gradient-to-br from-blue-600 via-blue-500 to-indigo-600 text-white px-8 py-3 md:px-10 md:py-4 rounded-[1.5rem] font-black text-[10px] uppercase tracking-[0.2em] shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 transition-all transform hover:-translate-y-1 active:scale-95 whitespace-nowrap"
                                 onClick={() => onSave(formData as JobEntry)}
                             >
                                 Update
@@ -126,7 +126,7 @@ function CustomSelect({ value, options, onChange }: { value: string, options: st
             <button
                 type="button"
                 onClick={() => setIsOpen(!isOpen)}
-                className="cursor-pointer w-full bg-slate-50/50 border border-slate-200/60 rounded-[1.5rem] px-6 py-4 text-sm font-black text-slate-800 focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:bg-white focus:border-blue-500/50 text-left flex justify-between items-center transition-all shadow-sm"
+                className="cursor-pointer w-full bg-slate-50/50 border border-slate-200/60 rounded-[1.5rem] px-5 py-3 md:px-6 md:py-4 text-xs md:text-sm font-black text-slate-800 focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:bg-white focus:border-blue-500/50 text-left flex justify-between items-center transition-all shadow-sm"
             >
                 <span className="truncate">{value || "Select..."}</span>
                 <svg className={`w-5 h-5 text-slate-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">

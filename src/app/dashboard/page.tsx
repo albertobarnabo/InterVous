@@ -120,24 +120,24 @@ export default function DashboardPage() {
 
             <TopBar keys={keys} />
 
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 relative z-10">
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-12 relative z-10">
                 {/* Header Section */}
-                <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6">
+                <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 md:mb-12 gap-4 md:gap-6">
                     <div>
-                        <h1 className="text-5xl md:text-6xl font-black text-slate-900 tracking-tight leading-none mb-4">
+                        <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-slate-900 tracking-tight leading-none mb-3 md:mb-4">
                             Track your next <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600">Career Move</span>
                         </h1>
-                        <p className="text-slate-600 text-xl max-w-2xl font-medium leading-relaxed">
+                        <p className="text-slate-600 text-base sm:text-lg md:text-xl max-w-2xl font-medium leading-relaxed">
                             Keep all your job applications organized and add new jobs quickly.
                         </p>
                     </div>
 
                     <button
                         onClick={() => setShowAddPanel(true)}
-                        className='bg-slate-900 hover:bg-slate-800 text-white font-bold px-8 py-4 rounded-2xl cursor-pointer shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 hover:scale-[1.02] active:scale-[0.98] flex items-center gap-3 ring-1 ring-white/20'
+                        className='bg-slate-900 hover:bg-slate-800 text-white font-bold px-6 py-3 md:px-8 md:py-4 rounded-2xl cursor-pointer shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 hover:scale-[1.02] active:scale-[0.98] flex items-center gap-2 md:gap-3 ring-1 ring-white/20 text-sm md:text-base whitespace-nowrap'
                     >
-                        <div className="w-6 h-6 bg-white/20 rounded-lg flex items-center justify-center">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 4v16m8-8H4" /></svg>
+                        <div className="w-5 h-5 md:w-6 md:h-6 bg-white/20 rounded-lg flex items-center justify-center">
+                            <svg className="w-3 h-3 md:w-4 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 4v16m8-8H4" /></svg>
                         </div>
                         Add Application
                     </button>

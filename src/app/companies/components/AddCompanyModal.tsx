@@ -85,25 +85,25 @@ export default function AddCompanyModal({ onClose, onSuccess, initialData }: Add
     return (
         <div className="fixed inset-0 z-[60] overflow-y-auto bg-slate-900/20 backdrop-blur-md">
              <div className="flex min-h-full items-center justify-center p-4 md:p-6 text-center">
-                <div className="w-full max-w-2xl glass-panel !bg-white/90 relative animate-in zoom-in-95 duration-300 text-left rounded-[3.5rem] shadow-2xl">
+                <div className="w-full max-w-2xl glass-panel !bg-white/90 relative animate-in zoom-in-95 duration-300 text-left rounded-[2.5rem] md:rounded-[3.5rem] shadow-2xl">
                      {/* Decorative background accents inside modal */}
                      <div className="absolute top-0 right-0 w-64 h-64 bg-blue-100/50 rounded-full blur-[80px] -mr-20 -mt-20 pointer-events-none" />
                      <div className="absolute bottom-0 left-0 w-48 h-48 bg-indigo-100/40 rounded-full blur-[60px] -ml-10 -mb-10 pointer-events-none" />
 
-                    <div className="relative z-10 p-8 md:p-14">
-                        <header className="mb-10">
-                            <div className="flex items-center gap-6 mb-8">
-                                <div className="w-20 h-20 bg-gradient-to-br from-slate-900 to-slate-800 rounded-[2rem] flex items-center justify-center text-white shadow-xl shadow-slate-900/20">
-                                    <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+                    <div className="relative z-10 p-6 md:p-8 lg:p-14">
+                        <header className="mb-8 md:mb-10">
+                            <div className="flex items-center gap-4 md:gap-6 mb-6 md:mb-8">
+                                <div className="w-14 h-14 md:w-20 md:h-20 bg-gradient-to-br from-slate-900 to-slate-800 rounded-[1.5rem] md:rounded-[2rem] flex items-center justify-center text-white shadow-xl shadow-slate-900/20">
+                                    <svg className="w-7 h-7 md:w-10 md:h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
                                 </div>
                                 <div>
-                                    <h2 className="text-4xl font-black text-slate-900 tracking-tight leading-tight">{initialData ? 'Edit Company' : 'Add Company'}</h2>
-                                    <p className="text-slate-500 font-bold text-base mt-2">{initialData ? 'Update company details' : 'Add a new company to your database'}</p>
+                                    <h2 className="text-2xl md:text-4xl font-black text-slate-900 tracking-tight leading-tight">{initialData ? 'Edit Company' : 'Add Company'}</h2>
+                                    <p className="text-slate-500 font-bold text-sm md:text-base mt-1 md:mt-2">{initialData ? 'Update company details' : 'Add a new company to your database'}</p>
                                 </div>
                             </div>
                         </header>
 
-                        <div className="space-y-8">
+                        <div className="space-y-6 md:space-y-8">
                             <div className="space-y-3">
                                 <label className="block text-xs font-black text-slate-400 uppercase tracking-[0.2em] ml-2">Company Name</label>
                                 <input
@@ -111,11 +111,11 @@ export default function AddCompanyModal({ onClose, onSuccess, initialData }: Add
                                     value={name}
                                     onChange={(e) => setName(e.target.value)}
                                     placeholder="Acme Inc."
-                                    className="w-full bg-slate-50 border border-slate-200 rounded-3xl px-8 py-5 text-base font-bold text-slate-900 focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:bg-white focus:border-blue-500 transition-all placeholder:text-slate-400"
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl md:rounded-3xl px-6 py-4 md:px-8 md:py-5 text-sm md:text-base font-bold text-slate-900 focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:bg-white focus:border-blue-500 transition-all placeholder:text-slate-400"
                                 />
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
                                 <div className="space-y-3">
                                     <label className="block text-xs font-black text-slate-400 uppercase tracking-[0.2em] ml-2">Website URL</label>
                                     <input
@@ -123,7 +123,7 @@ export default function AddCompanyModal({ onClose, onSuccess, initialData }: Add
                                         value={website}
                                         onChange={(e) => setWebsite(e.target.value)}
                                         placeholder="https://acme.com"
-                                        className="w-full bg-slate-50 border border-slate-200 rounded-3xl px-8 py-5 text-sm font-bold text-slate-900 focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:bg-white focus:border-blue-500 transition-all placeholder:text-slate-400"
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl md:rounded-3xl px-6 py-4 md:px-8 md:py-5 text-xs md:text-sm font-bold text-slate-900 focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:bg-white focus:border-blue-500 transition-all placeholder:text-slate-400"
                                     />
                                 </div>
                                 <div className="space-y-3">
@@ -133,7 +133,7 @@ export default function AddCompanyModal({ onClose, onSuccess, initialData }: Add
                                         value={logoUrl}
                                         onChange={(e) => setLogoUrl(e.target.value)}
                                         placeholder="https://acme.com/logo.png"
-                                        className="w-full bg-slate-50 border border-slate-200 rounded-3xl px-8 py-5 text-sm font-bold text-slate-900 focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:bg-white focus:border-blue-500 transition-all placeholder:text-slate-400"
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl md:rounded-3xl px-6 py-4 md:px-8 md:py-5 text-xs md:text-sm font-bold text-slate-900 focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:bg-white focus:border-blue-500 transition-all placeholder:text-slate-400"
                                     />
                                 </div>
                             </div>
@@ -142,8 +142,8 @@ export default function AddCompanyModal({ onClose, onSuccess, initialData }: Add
                                 <label className="block text-xs font-black text-slate-400 uppercase tracking-[0.2em] ml-2">Tags</label>
                                     <Listbox value={selectedTagIds} onChange={setSelectedTagIds} multiple>
                                         <div className="relative w-full">
-                                            <ListboxButton className="cursor-pointer text-sm font-bold text-slate-700 
-                                                px-8 py-5 w-full bg-slate-50 border border-slate-200 rounded-3xl hover:bg-slate-100
+                                            <ListboxButton className="cursor-pointer text-xs md:text-sm font-bold text-slate-700 
+                                                px-6 py-4 md:px-8 md:py-5 w-full bg-slate-50 border border-slate-200 rounded-2xl md:rounded-3xl hover:bg-slate-100
                                                 flex items-center justify-between gap-3 text-left
                                                 transition-all duration-200">
                                                 <span className="truncate block text-slate-900">
@@ -217,17 +217,17 @@ export default function AddCompanyModal({ onClose, onSuccess, initialData }: Add
                                 </div>
                             )}
 
-                             <div className="flex gap-4 pt-6">
+                             <div className="flex flex-col sm:flex-row gap-3 md:gap-4 pt-4 md:pt-6">
                                 <button
                                     onClick={onClose}
-                                    className="cursor-pointer flex-1 bg-slate-100/80 text-slate-500 px-8 py-5 rounded-3xl font-black text-xs uppercase tracking-[0.2em] hover:bg-slate-200 transition-all active:scale-95"
+                                    className="cursor-pointer flex-1 bg-slate-100/80 text-slate-500 px-6 py-4 md:px-8 md:py-5 rounded-2xl md:rounded-3xl font-black text-xs uppercase tracking-[0.2em] hover:bg-slate-200 transition-all active:scale-95"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     onClick={handleSubmit}
                                     disabled={loading || !name}
-                                    className="cursor-pointer flex-[2] bg-slate-900 text-white px-8 py-5 rounded-3xl font-black text-xs uppercase tracking-[0.2em] shadow-xl shadow-slate-900/20 hover:shadow-2xl hover:shadow-slate-900/30 transition-all transform hover:-translate-y-1 active:scale-95 flex items-center justify-center gap-3 min-w-[200px]"
+                                    className="cursor-pointer flex-[2] bg-slate-900 text-white px-6 py-4 md:px-8 md:py-5 rounded-2xl md:rounded-3xl font-black text-xs uppercase tracking-[0.2em] shadow-xl shadow-slate-900/20 hover:shadow-2xl hover:shadow-slate-900/30 transition-all transform hover:-translate-y-1 active:scale-95 flex items-center justify-center gap-3 min-w-0 sm:min-w-[200px]"
                                 >
                                     {loading ? (
                                         <>
