@@ -183,7 +183,7 @@ export default function DashboardPage() {
                                         <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
                                     </ListboxButton>
 
-                                    <ListboxOptions className="absolute right-0 z-50 mt-3 w-full glass-panel rounded-2xl py-3 overflow-hidden animate-in fade-in slide-in-from-top-4 duration-300 shadow-2xl">
+                                    <ListboxOptions className="absolute right-0 z-50 mt-3 w-full bg-white/95 backdrop-blur-xl rounded-2xl py-3 overflow-hidden animate-in fade-in slide-in-from-top-4 duration-300 shadow-2xl">
                                         <p className="px-6 py-2 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100/50 mb-2">AI Extraction Model</p>
                                         {models.map((model) => (
                                             <ListboxOption

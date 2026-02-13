@@ -1,12 +1,23 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { CompanyWithTags } from '../../../../lib/types';
+import { getProfileAvatar } from '../../../../lib/backend/profiles';
 
 interface CompanyCardProps {
-    company: CompanyWithTags;
+    company: CompanyWithTags & { created_by: string };
     onEdit: (company: CompanyWithTags) => void;
 }
 
 const CompanyCard: React.FC<CompanyCardProps> = ({ company, onEdit }) => {
+    const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (!company.created_by) return;
+
+        getProfileAvatar(company.created_by).then(url => {
+            if (url) setAvatarUrl(url);
+        });
+    }, [company.created_by]);
+
     return (
         <div className="relative group h-full overflow-hidden rounded-[1.75rem] md:rounded-[2rem]">
             {/* Nature background image */}
@@ -79,8 +90,9 @@ const CompanyCard: React.FC<CompanyCardProps> = ({ company, onEdit }) => {
                         </div>
                     </div>
 
-                    {/* Tags section */}
-                    <div className="mt-auto">
+                    {/* Tags + Creator Avatar row */}
+                    <div className="mt-auto flex items-end justify-between gap-3">
+                        {/* Tags section */}
                         <div className="flex flex-wrap gap-1.5 md:gap-2">
                             {company.tags.map((tag) => (
                                 <span 
@@ -96,6 +108,21 @@ const CompanyCard: React.FC<CompanyCardProps> = ({ company, onEdit }) => {
                                 </span>
                             )}
                         </div>
+
+                        {/* Creator avatar */}
+                        {avatarUrl && (
+                            <div
+                                className="shrink-0 w-7 h-7 md:w-8 md:h-8 rounded-xl md:rounded-2x overflow-hidden border border-white/70 shadow-[0_4px_16px_0_rgba(0,0,0,0.12)] backdrop-blur-md bg-white/60 transition-all duration-300 group-hover:scale-110 group-hover:shadow-[0_4px_20px_0_rgba(0,0,0,0.18)]"
+                                title="Added by"
+                            >
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                    src={avatarUrl}
+                                    alt="Added by"
+                                    className="w-full h-full object-cover"
+                                />
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

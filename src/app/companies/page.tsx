@@ -1,8 +1,6 @@
-
 'use client';
 
-
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import TopBar from '@/components/TopBar';
 import { useAuth } from '../../../contexts/AuthContext';
 import { getCompanies, getCompanyTags } from '../../../lib/backend/companies';
@@ -14,63 +12,105 @@ import { Listbox, ListboxButton, ListboxOption, ListboxOptions } from '@headless
 
 export default function CompaniesPage() {
     const { user } = useAuth();
+    const ITEMS_PER_PAGE = 15;
 
-    const [companies, setCompanies] = useState<CompanyWithTags[]>([]);
+    // Data State
+    const [currentPage, setCurrentPage] = useState(1);
+    const [companiesCache, setCompaniesCache] = useState<Record<number, CompanyWithTags[]>>({});
+    const [totalCount, setTotalCount] = useState(0);
+    
     const [allTags, setAllTags] = useState<CompanyTag[]>([]);
     const [keys, setKeys] = useState<ApiKeys | null>(null);
-    const [loading, setLoading] = useState(true);
+    
+    // Loading State
+    const [loadingCompanies, setLoadingCompanies] = useState(true);
 
     // Filters
     const [searchQuery, setSearchQuery] = useState('');
+    const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
     const [selectedTagId, setSelectedTagId] = useState<string | null>(null);
 
     // Modals
     const [showAddModal, setShowAddModal] = useState(false);
     const [editingCompany, setEditingCompany] = useState<CompanyWithTags | null>(null);
 
-    const fetchData = useCallback(async () => {
+    // Debounce Search
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearchQuery(searchQuery);
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
+
+    // Reset Cache on Filter Change
+    useEffect(() => {
+        setCurrentPage(1);
+        setCompaniesCache({});
+        // Don't reset totalCount here to avoid UI jump, it will update on fetch
+    }, [debouncedSearchQuery, selectedTagId]);
+
+    // Initial Data Fetch (Tags & Keys)
+    useEffect(() => {
         if (!user) return;
-        setLoading(true);
-        try {
-            const [companiesData, tagsData, keysData] = await Promise.all([
-                getCompanies(),
-                getCompanyTags(),
-                getKeysByUser(user.id)
-            ]);
-            setCompanies(companiesData);
-            setAllTags(tagsData);
-            setKeys(keysData || null);
-        } catch (error) {
-            console.error("Error fetching data:", error);
-        } finally {
-            setLoading(false);
-        }
+        const initData = async () => {
+            try {
+                const [tagsData, keysData] = await Promise.all([
+                    getCompanyTags(),
+                    getKeysByUser(user.id)
+                ]);
+                setAllTags(tagsData);
+                setKeys(keysData || null);
+            } catch (error) {
+                console.error("Error fetching initial data:", error);
+            }
+        };
+        initData();
     }, [user]);
 
-    useEffect(() => {
-        if (!user) {
-            // router.push("/login"); // AuthContext handles redirect or we should checks
-             // For now assuming AuthContext or layout protection. 
-             // But valid to check.
-             return;
-        }
-        fetchData();
-    }, [user, fetchData]);
+    // Fetch Companies
+    const fetchCompanies = useCallback(async () => {
+        if (!user) return;
 
-    const filteredCompanies = useMemo(() => {
-        return companies.filter(company => {
-            const matchesSearch = company.name.toLowerCase().includes(searchQuery.toLowerCase());
-            const matchesTag = selectedTagId 
-                ? company.tags.some(tag => tag.id === selectedTagId)
-                : true;
-            return matchesSearch && matchesTag;
-        });
-    }, [companies, searchQuery, selectedTagId]);
+        // Check if we have valid cache for this page
+        // Note: we only check cache if we believe it's valid for the current filters.
+        // The cache clearing effect runs before this effect usually, or we depend on cache state?
+        // Actually, if we just cleared cache, companiesCache[currentPage] will be undefined.
+        if (companiesCache[currentPage]) {
+            setLoadingCompanies(false);
+            return;
+        }
+
+        setLoadingCompanies(true);
+        try {
+            const { data, count } = await getCompanies(
+                currentPage,
+                ITEMS_PER_PAGE,
+                debouncedSearchQuery,
+                selectedTagId
+            );
+            
+            setCompaniesCache(prev => ({
+                ...prev,
+                [currentPage]: data
+            }));
+            setTotalCount(count);
+        } catch (error) {
+            console.error("Error fetching companies:", error);
+        } finally {
+            setLoadingCompanies(false);
+        }
+    }, [user, currentPage, debouncedSearchQuery, selectedTagId, companiesCache]);
+
+    useEffect(() => {
+        fetchCompanies();
+    }, [fetchCompanies]);
 
     const handleAddSuccess = () => {
         setShowAddModal(false);
         setEditingCompany(null);
-        fetchData();
+        // Clear cache and refetch page 1 to show new data
+        setCompaniesCache({});
+        setCurrentPage(1);
     };
 
     const handleEdit = (company: CompanyWithTags) => {
@@ -78,7 +118,20 @@ export default function CompaniesPage() {
         setShowAddModal(true);
     };
 
-    if (!user) return null; // or loading spinner
+    const handlePageChange = (newPage: number) => {
+        if (newPage >= 1 && newPage <= Math.ceil(totalCount / ITEMS_PER_PAGE)) {
+            if (!companiesCache[newPage]) {
+                setLoadingCompanies(true);
+            }
+            setCurrentPage(newPage);
+        }
+    };
+
+    if (!user) return null;
+
+    const currentCompanies = companiesCache[currentPage] || [];
+    const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
+    const hasCompanies = currentCompanies.length > 0;
 
     return (
         <div className="min-h-screen relative overflow-x-hidden">
@@ -153,7 +206,7 @@ export default function CompaniesPage() {
                                         <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
                                     </ListboxButton>
 
-                                    <ListboxOptions className="absolute right-0 z-50 mt-3 w-full glass-panel rounded-2xl py-2 overflow-hidden animate-in fade-in slide-in-from-top-4 duration-300 max-h-60 overflow-y-auto focus:outline-none">
+                                    <ListboxOptions className="absolute right-0 z-50 mt-3 w-full bg-white/95 backdrop-blur-xl rounded-2xl py-2 overflow-hidden animate-in fade-in slide-in-from-top-4 duration-300 max-h-60 overflow-y-auto focus:outline-none">
                                         <ListboxOption
                                             value={null}
                                             className={({ active }) =>
@@ -181,18 +234,45 @@ export default function CompaniesPage() {
                 </div>
 
                 {/* Companies Grid */}
-                {loading ? (
+                {loadingCompanies ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 animate-pulse">
                         {[1, 2, 3, 4, 5, 6].map((i) => (
                             <div key={i} className="h-64 glass-card rounded-[2.5rem]"></div>
                         ))}
                     </div>
-                ) : filteredCompanies.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
-                        {filteredCompanies.map((company) => (
-                            <CompanyCard key={company.id} company={company} onEdit={handleEdit} />
-                        ))}
-                    </div>
+                ) : hasCompanies ? (
+                    <>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
+                            {currentCompanies.map((company) => (
+                                <CompanyCard key={company.id} company={company} onEdit={handleEdit} />
+                            ))}
+                        </div>
+
+                        {/* Pagination Controls */}
+                        <div className="mt-12 flex justify-center items-center gap-4">
+                            <button
+                                onClick={() => handlePageChange(currentPage - 1)}
+                                disabled={currentPage === 1}
+                                className="px-6 py-3 rounded-2xl glass-panel font-bold cursor-pointer text-slate-700 hover:bg-white/40 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                            >
+                                Previous
+                            </button>
+                            
+                            <div className="flex items-center gap-2">
+                                <span className="text-slate-600 font-bold">
+                                    Page {currentPage} of {totalPages || 1}
+                                </span>
+                            </div>
+
+                            <button
+                                onClick={() => handlePageChange(currentPage + 1)}
+                                disabled={currentPage >= totalPages}
+                                className="px-6 py-3 rounded-2xl glass-panel font-bold cursor-pointer text-slate-700 hover:bg-white/40 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                            >
+                                Next
+                            </button>
+                        </div>
+                    </>
                 ) : (
                     <div className="text-center py-20">
                         <div className="w-20 h-20 glass-panel rounded-3xl flex items-center justify-center mx-auto mb-6 text-slate-300">

@@ -2,17 +2,48 @@
 import { supabase } from '../supbaseClient';
 import { Company, CompanyTag, CompanyWithTags } from '../types';
 
-export async function getCompanies(): Promise<CompanyWithTags[]> {
-    const { data: companies, error: companiesError } = await supabase
-        .from('companies')
-        .select('*')
-        .order('name');
+export async function getCompanies(
+    page: number = 1,
+    pageSize: number = 20,
+    searchQuery: string = '',
+    tagId: string | null = null
+): Promise<{ data: CompanyWithTags[]; count: number }> {
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
 
-    if (companiesError) throw new Error(companiesError.message);
+    let query = supabase
+        .from('companies')
+        .select('*', { count: 'exact' });
+
+    if (tagId) {
+        // Filter by tag using an inner join on the junction table
+        query = supabase
+            .from('companies')
+            // Using !inner ensures we only get companies that have a matching record in company_tag_map
+            .select('*, company_tag_map!inner(tag_id)', { count: 'exact' })
+            .eq('company_tag_map.tag_id', tagId);
+    }
+
+    if (searchQuery) {
+        query = query.ilike('name', `%${searchQuery}%`);
+    }
+
+    const { data: companies, error, count } = await query
+        .order('name')
+        .range(from, to);
+
+    if (error) throw new Error(error.message);
+
+    if (!companies || companies.length === 0) {
+        return { data: [], count: count || 0 };
+    }
+
+    const companyIds = companies.map((c) => c.id);
 
     const { data: tagMaps, error: tagMapsError } = await supabase
         .from('company_tag_map')
-        .select('company_id, tag_id, company_tags(id, name, description)');
+        .select('company_id, tag_id, company_tags(id, name, description)')
+        .in('company_id', companyIds);
 
     if (tagMapsError) throw new Error(tagMapsError.message);
 
@@ -20,17 +51,21 @@ export async function getCompanies(): Promise<CompanyWithTags[]> {
         const tags = tagMaps
             .filter((map) => map.company_id === company.id)
             .map((map) => map.company_tags) as unknown as CompanyTag[];
-        
+
         // Remove duplicates just in case
-        const uniqueTags = Array.from(new Map(tags.map(tag => [tag.id, tag])).values());
+        const uniqueTags = Array.from(new Map(tags.map((tag) => [tag.id, tag])).values());
+        
+        // Clean up internal join property if it exists
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { company_tag_map, ...cleanCompany } = company as unknown as { company_tag_map: unknown } & CompanyWithTags;
 
         return {
-            ...company,
+            ...cleanCompany,
             tags: uniqueTags,
         };
     });
 
-    return companiesWithTags;
+    return { data: companiesWithTags, count: count || 0 };
 }
 
 export async function createCompany(company: Omit<Company, 'id' | 'created_by'>, tagIds: string[], userId: string): Promise<CompanyWithTags> {
