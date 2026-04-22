@@ -1,36 +1,25 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Intervous
 
-## Getting Started
+Intervous is an AI-powered job application and interview management platform designed to help job seekers track their applications, analyze job descriptions, and prepare for interviews using advanced LLMs.
 
-First, run the development server:
+## Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- **Job Tracking**: Keep track of all your job applications in one place.
+- **Company Management**: Organize and manage companies you are applying to, complete with tags and metadata.
+- **AI-Powered Analysis**: Integrates with Mistral AI, DeepSeek, and OpenAI to provide intelligent insights into job descriptions and interview preparation.
+- **Web Scraping**: Built-in scraper to automatically extract job details directly from job posting URLs.
+- **Secure Authentication & Database**: Powered by Supabase for reliable and secure user authentication and data storage.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Tech Stack
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- **Framework**: Next.js 15 (App Router)
+- **Styling**: Tailwind CSS v4, DaisyUI, Flowbite React
+- **Database & Auth**: Supabase
+- **AI Integration**: Mistral AI, OpenAI, DeepSeek
+- **Utilities**: Cheerio (for web scraping), Axios
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Website
 
-## Learn More
+You can try InterVous [here](https://albertobarnabo.it/intervous)!
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Notice: In order to login, you will need credentials. If you don't have them, please [contact me](mailto:[alberto.barnabo@gmail.com]).
