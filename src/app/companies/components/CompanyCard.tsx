@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { CompanyWithTags } from "../../../../lib/types";
 import { getProfileAvatar } from "../../../../lib/backend/profiles";
-import background from "../../../../public/background.png";
 import cardBackground from "../../../../public/card_background.png";
 
 interface CompanyCardProps {
