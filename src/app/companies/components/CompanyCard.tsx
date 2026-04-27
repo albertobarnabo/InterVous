@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { CompanyWithTags } from "../../../../lib/types";
 import { getProfileAvatar } from "../../../../lib/backend/profiles";
 import background from "../../../../public/background.png";
+import cardBackground from "../../../../public/card_background.png";
 
 interface CompanyCardProps {
   company: CompanyWithTags & { created_by: string };
@@ -25,7 +26,7 @@ const CompanyCard: React.FC<CompanyCardProps> = ({ company, onEdit }) => {
       <div
         className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110"
         style={{
-          backgroundImage: `url(${background.src})`,
+          backgroundImage: `url(${cardBackground.src})`,
         }}
       />
 

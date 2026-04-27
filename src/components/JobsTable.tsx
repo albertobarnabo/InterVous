@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { JobEntry } from "../../lib/types";
+import background from "../../public/background.png";
 
 interface JobsTableProps {
   jobs: JobEntry[];
@@ -70,7 +71,7 @@ export default function JobsTable({ jobs, onEditJob }: JobsTableProps) {
       <div
         className="absolute inset-0 bg-cover bg-center"
         style={{
-          backgroundImage: `url('/intervous/background.png')`,
+          backgroundImage: `url(${background.src})`,
         }}
       />
 
