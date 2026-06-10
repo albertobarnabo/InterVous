@@ -1,32 +1,35 @@
-import { ApiKeys } from './types';
 import { supabase } from './supbaseClient';
 
-export async function getKeysByUser(userId: string): Promise<ApiKeys | null> {
-    const { data, error } = await supabase
-        .from('keys')
-        .select('*')
-        .eq('user_id', userId)
+export type KeyField = 'open_ai' | 'deep_seek' | 'mistral' | 'tavily';
 
-    if (error) throw new Error(error.message);
-    return data[0];
+export type KeysStatus = Record<KeyField, boolean>;
+
+/* Which keys are configured (booleans only) — values never reach the browser */
+export async function getKeysStatus(): Promise<KeysStatus | null> {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return null;
+
+    const res = await fetch('/intervous/api/keys-status', {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+    });
+    if (!res.ok) return null;
+    return res.json();
 }
 
-export async function setApiKeys(userId: string, keys: ApiKeys) {
-    // upsert: creates the row on first save instead of silently updating nothing
-    const { data, error } = await supabase
+/* Write-only: saves the fields the user typed; empty fields are left unchanged */
+export async function setApiKeys(
+    userId: string,
+    keys: Partial<Record<KeyField, string>>
+): Promise<void> {
+    const updates: Record<string, string> = {};
+    for (const [field, value] of Object.entries(keys)) {
+        if (value && value.trim()) updates[field] = value.trim();
+    }
+    if (Object.keys(updates).length === 0) return;
+
+    const { error } = await supabase
         .from('keys')
-        .upsert(
-            {
-                user_id: userId,
-                open_ai: keys.open_ai,
-                deep_seek: keys.deep_seek,
-                mistral: keys.mistral,
-                tavily: keys.tavily,
-            },
-            { onConflict: 'user_id' }
-        )
-        .select();
+        .upsert({ user_id: userId, ...updates }, { onConflict: 'user_id' });
 
     if (error) throw new Error(error.message);
-    return data[0];
 }

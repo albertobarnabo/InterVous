@@ -7,12 +7,14 @@ import logo from "../../../public/intervous_logo.png";
 import background from "../../../public/background.png";
 
 export default function LoginPage() {
-  const { user, signIn } = useAuth();
+  const { user, signIn, signUp } = useAuth();
   const router = useRouter();
 
+  const [mode, setMode] = useState<"login" | "signup" | "forgot">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
+  const [infoMsg, setInfoMsg] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -21,12 +23,36 @@ export default function LoginPage() {
     }
   }, [user, router]);
 
+  const switchMode = (next: "login" | "signup" | "forgot") => {
+    setMode(next);
+    setErrorMsg("");
+    setInfoMsg("");
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMsg("");
+    setInfoMsg("");
     setLoading(true);
     try {
-      await signIn(email, password);
-      router.push("/dashboard/");
+      if (mode === "login") {
+        await signIn(email, password);
+        router.push("/dashboard/");
+        return;
+      }
+      if (mode === "signup") {
+        await signUp(email, password);
+        setInfoMsg("Account created — check your email to confirm, then log in.");
+        setMode("login");
+      } else {
+        const { supabase } = await import("../../../lib/supbaseClient");
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/intervous/reset-password`,
+        });
+        if (error) throw error;
+        setInfoMsg("Reset link sent — check your email.");
+      }
+      setLoading(false);
     } catch (error: unknown) {
       if (error instanceof Error) {
         setErrorMsg(error.message);
@@ -36,6 +62,10 @@ export default function LoginPage() {
       setLoading(false);
     }
   };
+
+  const heading = mode === "signup" ? "Create your account." : mode === "forgot" ? "Reset your password." : "Continue your professional adventure.";
+  const buttonLabel = mode === "signup" ? "Sign Up" : mode === "forgot" ? "Send Reset Link" : "Log In";
+  const loadingLabel = mode === "forgot" ? "Sending..." : "Authenticating...";
 
   return (
     <>
@@ -124,7 +154,7 @@ export default function LoginPage() {
                     INTERVOUS
                   </h1>
                   <p className="text-slate-700 mt-2 text-center font-semibold text-sm md:text-base drop-shadow-sm">
-                    Continue your professional adventure.
+                    {heading}
                   </p>
                 </div>
 
@@ -144,19 +174,22 @@ export default function LoginPage() {
                     />
                   </div>
 
-                  <div className="space-y-2 md:space-y-3">
-                    <label className="text-[11px] font-extrabold text-slate-700 uppercase tracking-[0.18em] ml-3 drop-shadow-sm">
-                      Password
-                    </label>
-                    <input
-                      type="password"
-                      placeholder="••••••••••••"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                      className="w-full backdrop-blur-md bg-white/62 border border-white/65 rounded-2xl md:rounded-3xl px-6 py-4 md:px-8 md:py-5 text-sm md:text-base font-semibold text-slate-900 focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:bg-white/82 focus:border-white/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] transition-all duration-200 placeholder:text-slate-400/80"
-                    />
-                  </div>
+                  {mode !== "forgot" && (
+                    <div className="space-y-2 md:space-y-3">
+                      <label className="text-[11px] font-extrabold text-slate-700 uppercase tracking-[0.18em] ml-3 drop-shadow-sm">
+                        Password
+                      </label>
+                      <input
+                        type="password"
+                        placeholder="••••••••••••"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                        minLength={mode === "signup" ? 6 : undefined}
+                        className="w-full backdrop-blur-md bg-white/62 border border-white/65 rounded-2xl md:rounded-3xl px-6 py-4 md:px-8 md:py-5 text-sm md:text-base font-semibold text-slate-900 focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:bg-white/82 focus:border-white/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] transition-all duration-200 placeholder:text-slate-400/80"
+                      />
+                    </div>
+                  )}
 
                   <button
                     type="submit"
@@ -169,11 +202,11 @@ export default function LoginPage() {
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                         </svg>
-                        <span>Authenticating...</span>
+                        <span>{loadingLabel}</span>
                       </>
                     ) : (
                       <>
-                        <span>Log In</span>
+                        <span>{buttonLabel}</span>
                         <svg className="w-5 h-5 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 7l5 5m0 0l-5 5m5-5H6" />
                         </svg>
@@ -191,6 +224,34 @@ export default function LoginPage() {
                       {errorMsg}
                     </div>
                   )}
+
+                  {infoMsg && (
+                    <div className="backdrop-blur-md bg-emerald-100/80 border-2 border-emerald-200/60 text-emerald-700 text-[11px] font-bold py-4 px-6 rounded-2xl md:rounded-3xl flex items-center gap-3 shadow-[0_4px_20px_rgba(16,185,129,0.15)] animate-in slide-in-from-top-2 duration-300">
+                      <div className="p-1.5 bg-emerald-200/80 rounded-lg shrink-0">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                      {infoMsg}
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-between pt-1 px-1">
+                    {mode === "login" ? (
+                      <>
+                        <button type="button" onClick={() => switchMode("signup")} className="text-[11px] font-extrabold text-slate-700 hover:text-blue-700 uppercase tracking-wider transition-colors cursor-pointer drop-shadow-sm">
+                          Create account
+                        </button>
+                        <button type="button" onClick={() => switchMode("forgot")} className="text-[11px] font-extrabold text-slate-700 hover:text-blue-700 uppercase tracking-wider transition-colors cursor-pointer drop-shadow-sm">
+                          Forgot password?
+                        </button>
+                      </>
+                    ) : (
+                      <button type="button" onClick={() => switchMode("login")} className="text-[11px] font-extrabold text-slate-700 hover:text-blue-700 uppercase tracking-wider transition-colors cursor-pointer drop-shadow-sm mx-auto">
+                        ← Back to login
+                      </button>
+                    )}
+                  </div>
                 </form>
               </div>
             </div>

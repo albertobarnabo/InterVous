@@ -6,13 +6,14 @@ import { supabase } from "../../../../lib/supbaseClient";
 import { JobEntry, CompanyWithTags, CompanyInfo } from "../../../../lib/types";
 import { getCompanyInfo, upsertCompanyInfo } from "../../../../lib/backend/companyInfo";
 import { PENDING_ACTION_KEY, EVENT_ADD_APPLICATION } from "@/components/CommandPalette";
+import { useToast } from "@/components/Toast";
 
 interface CompanyDetailPanelProps {
   company: CompanyWithTags | null;
   onClose: () => void;
   userId: string;
   onEdit?: (company: CompanyWithTags) => void;
-  tavilyKey?: string | null;
+  tavilyConfigured?: boolean;
 }
 
 type InfoDraft = {
@@ -102,9 +103,10 @@ export default function CompanyDetailPanel({
   onClose,
   userId,
   onEdit,
-  tavilyKey,
+  tavilyConfigured,
 }: CompanyDetailPanelProps) {
   const router = useRouter();
+  const { toast } = useToast();
   const [jobs, setJobs] = useState<JobEntry[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -145,17 +147,22 @@ export default function CompanyDetailPanel({
   };
 
   const handleResearch = async () => {
-    if (!company || !tavilyKey) return;
+    if (!company || !tavilyConfigured) return;
     setResearching(true);
     setInfoError("");
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not signed in");
+
       const res = await fetch("/intervous/api/company-research", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
         body: JSON.stringify({
           companyName: company.name,
           website: company.website,
-          apiKey: tavilyKey,
         }),
       });
       const data = await res.json();
@@ -194,6 +201,7 @@ export default function CompanyDetailPanel({
       );
       setInfo(saved);
       setEditingInfo(false);
+      toast("Company info saved");
     } catch (err) {
       setInfoError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -359,8 +367,8 @@ export default function CompanyDetailPanel({
                 <div className="flex items-center gap-1.5">
                   <button
                     onClick={handleResearch}
-                    disabled={researching || !tavilyKey}
-                    title={tavilyKey ? "Auto-fill with web search" : "Add a Tavily API key in Configs to enable"}
+                    disabled={researching || !tavilyConfigured}
+                    title={tavilyConfigured ? "Auto-fill with web search" : "Add a Tavily API key in Configs to enable"}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold bg-gradient-to-r from-violet-500 to-indigo-500 text-white shadow-sm shadow-indigo-500/25 hover:from-violet-600 hover:to-indigo-600 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     {researching ? (

@@ -140,6 +140,35 @@ export async function createCompanyTag(name: string, description: string | null)
     return data;
 }
 
+export async function updateCompanyTag(id: string, name: string): Promise<CompanyTag> {
+    const { data, error } = await supabase
+        .from('company_tags')
+        .update({ name })
+        .eq('id', id)
+        .select()
+        .single();
+
+    if (error) throw new Error(error.message);
+    return data;
+}
+
+export async function deleteCompanyTag(id: string): Promise<void> {
+    // Remove assignments first so the FK constraint doesn't block the delete
+    const { error: mapError } = await supabase
+        .from('company_tag_map')
+        .delete()
+        .eq('tag_id', id);
+
+    if (mapError) throw new Error(mapError.message);
+
+    const { error } = await supabase
+        .from('company_tags')
+        .delete()
+        .eq('id', id);
+
+    if (error) throw new Error(error.message);
+}
+
 export async function getCompanyByName(name: string): Promise<CompanyWithTags | null> {
     const { data: company, error } = await supabase
         .from('companies')

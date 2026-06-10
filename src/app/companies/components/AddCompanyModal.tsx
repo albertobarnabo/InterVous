@@ -1,9 +1,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from "../../../../contexts/AuthContext";
-import { createCompany, createCompanyTag, getCompanyTags, updateCompany } from '../../../../lib/backend/companies';
+import { createCompany, createCompanyTag, getCompanyTags, updateCompany, updateCompanyTag, deleteCompanyTag } from '../../../../lib/backend/companies';
 import { CompanyTag, CompanyWithTags } from '../../../../lib/types';
 import { Listbox, ListboxButton, ListboxOption, ListboxOptions } from '@headlessui/react';
+import { useToast } from '@/components/Toast';
 
 interface AddCompanyModalProps {
     onClose: () => void;
@@ -22,6 +23,10 @@ export default function AddCompanyModal({ onClose, onSuccess, initialData }: Add
     const [error, setError] = useState('');
     const [newTagName, setNewTagName] = useState('');
     const [isCreatingTag, setIsCreatingTag] = useState(false);
+    const [manageTags, setManageTags] = useState(false);
+    const [tagDrafts, setTagDrafts] = useState<Record<string, string>>({});
+    const [busyTagId, setBusyTagId] = useState<string | null>(null);
+    const { toast } = useToast();
 
     useEffect(() => {
         loadTags();
@@ -61,6 +66,7 @@ export default function AddCompanyModal({ onClose, onSuccess, initialData }: Add
                     logo_url: logoUrl || null,
                 }, selectedTagIds, user.id);
             }
+            toast(initialData ? `${name} updated` : `${name} added to companies`);
             onSuccess();
         } catch (err: unknown) {
             if (err instanceof Error) {
@@ -86,6 +92,40 @@ export default function AddCompanyModal({ onClose, onSuccess, initialData }: Add
             console.error('Failed to create tag', err);
         } finally {
             setIsCreatingTag(false);
+        }
+    };
+
+    const handleRenameTag = async (tag: CompanyTag) => {
+        const draft = (tagDrafts[tag.id] ?? tag.name).trim();
+        if (!draft || draft === tag.name) return;
+        setBusyTagId(tag.id);
+        try {
+            const updated = await updateCompanyTag(tag.id, draft);
+            setAvailableTags(prev =>
+                prev.map(t => (t.id === tag.id ? updated : t)).sort((a, b) => a.name.localeCompare(b.name))
+            );
+            toast(`Tag renamed to "${draft}"`);
+        } catch (err) {
+            console.error('Failed to rename tag', err);
+            toast('Failed to rename tag', 'error');
+        } finally {
+            setBusyTagId(null);
+        }
+    };
+
+    const handleDeleteTag = async (tag: CompanyTag) => {
+        if (!window.confirm(`Delete tag "${tag.name}"? It will be removed from all companies.`)) return;
+        setBusyTagId(tag.id);
+        try {
+            await deleteCompanyTag(tag.id);
+            setAvailableTags(prev => prev.filter(t => t.id !== tag.id));
+            setSelectedTagIds(prev => prev.filter(id => id !== tag.id));
+            toast(`Tag "${tag.name}" deleted`);
+        } catch (err) {
+            console.error('Failed to delete tag', err);
+            toast('Failed to delete tag', 'error');
+        } finally {
+            setBusyTagId(null);
         }
     };
 
@@ -152,7 +192,65 @@ export default function AddCompanyModal({ onClose, onSuccess, initialData }: Add
                             </div>
 
                             <div className="space-y-3">
-                                <label className="block text-xs font-black text-slate-400 uppercase tracking-[0.2em] ml-2">Tags</label>
+                                <div className="flex items-center justify-between">
+                                    <label className="block text-xs font-black text-slate-400 uppercase tracking-[0.2em] ml-2">Tags</label>
+                                    <button
+                                        type="button"
+                                        onClick={() => setManageTags(v => !v)}
+                                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-colors cursor-pointer ${
+                                            manageTags
+                                                ? 'bg-slate-900 text-white'
+                                                : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'
+                                        }`}
+                                    >
+                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                        </svg>
+                                        {manageTags ? 'Done' : 'Manage tags'}
+                                    </button>
+                                </div>
+
+                                {manageTags && (
+                                    <div className="space-y-2 rounded-2xl bg-slate-50/80 border border-slate-200/80 p-3 max-h-56 overflow-y-auto">
+                                        {availableTags.length === 0 && (
+                                            <p className="text-xs text-slate-400 font-medium text-center py-3">No tags yet</p>
+                                        )}
+                                        {availableTags.map((tag) => (
+                                            <div key={tag.id} className="flex items-center gap-2">
+                                                <input
+                                                    type="text"
+                                                    value={tagDrafts[tag.id] ?? tag.name}
+                                                    onChange={(e) => setTagDrafts(prev => ({ ...prev, [tag.id]: e.target.value }))}
+                                                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleRenameTag(tag); } }}
+                                                    disabled={busyTagId === tag.id}
+                                                    className="flex-1 bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all disabled:opacity-50"
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleRenameTag(tag)}
+                                                    disabled={busyTagId === tag.id || (tagDrafts[tag.id] ?? tag.name).trim() === tag.name || !(tagDrafts[tag.id] ?? tag.name).trim()}
+                                                    title="Save new name"
+                                                    className="shrink-0 p-2 rounded-xl text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                                                >
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                                    </svg>
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleDeleteTag(tag)}
+                                                    disabled={busyTagId === tag.id}
+                                                    title="Delete tag"
+                                                    className="shrink-0 p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer disabled:opacity-30"
+                                                >
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                                     <Listbox value={selectedTagIds} onChange={setSelectedTagIds} multiple>
                                         <div className="relative w-full">
                                             <ListboxButton className="cursor-pointer text-xs md:text-sm font-bold text-slate-700 

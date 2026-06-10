@@ -7,6 +7,7 @@ import tableBackground from "../../public/table_background.png";
 interface JobsTableProps {
   jobs: JobEntry[];
   onEditJob: (job: JobEntry) => void;
+  onRowClick?: (job: JobEntry) => void;
   linkedCompanyNames?: Set<string>;
   onLinkCompany?: (job: JobEntry) => void;
   onViewCompany?: (job: JobEntry) => void;
@@ -17,6 +18,7 @@ const ITEMS_PER_PAGE = 8;
 export default function JobsTable({
   jobs,
   onEditJob,
+  onRowClick,
   linkedCompanyNames,
   onLinkCompany,
   onViewCompany,
@@ -192,7 +194,7 @@ export default function JobsTable({
                     <tr
                       key={job.id}
                       className="group hover:bg-white/50 hover:backdrop-blur-xl transition-all duration-300 cursor-pointer relative border-b border-white/10 last:border-b-0"
-                      onClick={() => job.url && window.open(job.url, "_blank")}
+                      onClick={() => onRowClick ? onRowClick(job) : job.url && window.open(job.url, "_blank")}
                     >
                       <td className="px-10 py-7 relative">
                         {/* Row accent color */}
@@ -312,7 +314,7 @@ export default function JobsTable({
                 <div
                   key={job.id}
                   className={`backdrop-blur-xl bg-white/60 rounded-2xl p-4 border border-white/50 shadow-xl active:scale-[0.97] transition-all relative overflow-hidden`}
-                  onClick={() => job.url && window.open(job.url, "_blank")}
+                  onClick={() => onRowClick ? onRowClick(job) : job.url && window.open(job.url, "_blank")}
                 >
                   {/* Card accent bar */}
                   <div

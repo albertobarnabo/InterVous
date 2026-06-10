@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getUserAndKeys } from '../../../../lib/backend/serverKeys';
 
 const TAVILY_URL = 'https://api.tavily.com/search';
 
@@ -34,13 +35,23 @@ async function tavilyAnswer(
 
 export async function POST(req: Request) {
     try {
-        const { companyName, website, apiKey } = await req.json();
+        const { companyName, website } = await req.json();
 
-        if (!apiKey) {
-            return NextResponse.json({ error: 'Missing Tavily API key' }, { status: 400 });
-        }
         if (!companyName) {
             return NextResponse.json({ error: 'Missing company name' }, { status: 400 });
+        }
+
+        // Tavily key is read server-side from the caller's account
+        const auth = await getUserAndKeys(req);
+        if (!auth) {
+            return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+        }
+        const apiKey = auth.keys?.tavily;
+        if (!apiKey) {
+            return NextResponse.json(
+                { error: 'No Tavily API key configured. Add one in Configs.' },
+                { status: 400 }
+            );
         }
 
         const site = website ? ` (website: ${website})` : '';

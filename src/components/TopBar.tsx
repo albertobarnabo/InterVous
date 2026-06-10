@@ -6,14 +6,15 @@ import { useAuth } from '../../contexts/AuthContext';
 import { User, LogOut, Camera } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import KeysPanel from './KeysPanel';
-import { ApiKeys } from '../../lib/types';
+import { KeysStatus } from '../../lib/keyService';
 import logo from '../../public/intervous_logo.png';
 import { getProfile } from '../../lib/backend/profiles';
 import AvatarUploadModal from './AvatarUploadModal';
 import CommandPalette from './CommandPalette';
 
 interface TopBarProps {
-    keys: ApiKeys | null;
+    keysStatus: KeysStatus | null;
+    onKeysSaved?: () => void;
 }
 
 const NAV_ITEMS = [
@@ -37,7 +38,7 @@ const NAV_ITEMS = [
     },
 ];
 
-export default function TopBar({ keys }: TopBarProps) {
+export default function TopBar({ keysStatus, onKeysSaved }: TopBarProps) {
     const router = useRouter();
     const pathname = usePathname();
     const { user, signOut } = useAuth();
@@ -278,7 +279,8 @@ export default function TopBar({ keys }: TopBarProps) {
             {showKeysPanel && (
                 <KeysPanel
                     onClose={() => setShowKeysPanel(false)}
-                    keys={keys}
+                    keysStatus={keysStatus}
+                    onSaved={onKeysSaved}
                 />
             )}
 

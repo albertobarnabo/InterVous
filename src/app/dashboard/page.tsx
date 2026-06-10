@@ -10,15 +10,17 @@ import AddJobPanel from '@/components/AddJobPanel';
 import StatsOverview from '@/components/StatsOverview';
 import KanbanBoard from '@/components/KanbanBoard';
 import LinkCompanyModal from '@/components/LinkCompanyModal';
+import JobDetailPanel from '@/components/JobDetailPanel';
 import { PENDING_ACTION_KEY, EVENT_ADD_APPLICATION } from '@/components/CommandPalette';
+import { useToast } from '@/components/Toast';
 
 import { useAuth } from '../../../contexts/AuthContext';
 
 import { getJobsByUser, updateJob, deleteJob } from '../../../lib/jobService';
-import { getKeysByUser } from '../../../lib/keyService';
+import { getKeysStatus, KeysStatus } from '../../../lib/keyService';
 import { getAllCompanyNames } from '../../../lib/backend/companies';
 
-import { ApiKeys, JobEntry } from '../../../lib/types';
+import { JobEntry } from '../../../lib/types';
 
 import { Listbox, ListboxButton, ListboxOption, ListboxOptions } from '@headlessui/react';
 
@@ -71,14 +73,16 @@ export default function DashboardPage() {
 
     const { user, loading: authLoading } = useAuth();
     const router = useRouter();
+    const { toast } = useToast();
     const [jobs, setJobs] = useState<JobEntry[]>([]);
-    const [keys, setKeys] = useState<ApiKeys | null>(null);
+    const [keysStatus, setKeysStatus] = useState<KeysStatus | null>(null);
     const [selectedModel, setSelectedModel] = useState("gpt-3.5-turbo");
 
     // Panels
     const [showAddPanel, setShowAddPanel] = useState(false);
     const [editingJob, setEditingJob] = useState<JobEntry | null>(null);
     const [linkingJob, setLinkingJob] = useState<JobEntry | null>(null);
+    const [selectedJob, setSelectedJob] = useState<JobEntry | null>(null);
 
     // Company linkage
     const [companyNames, setCompanyNames] = useState<Set<string>>(new Set());
@@ -94,9 +98,11 @@ export default function DashboardPage() {
         try {
             await updateJob(updatedJob, user.id);
             setEditingJob(null);
+            toast("Application updated");
             fetchJobs();
         } catch (error) {
             console.error("Failed to update job:", error);
+            toast("Failed to update application", "error");
         }
     };
 
@@ -106,9 +112,11 @@ export default function DashboardPage() {
         setJobs((prev) => prev.map((j) => (j.id === job.id ? { ...j, stage: newStage } : j)));
         try {
             await updateJob({ ...job, stage: newStage }, user.id);
+            toast(`Moved to ${newStage}`);
         } catch (error) {
             console.error("Failed to move application:", error);
             setJobs((prev) => prev.map((j) => (j.id === job.id ? { ...j, stage: job.stage } : j)));
+            toast("Failed to move application", "error");
         }
     };
 
@@ -117,9 +125,12 @@ export default function DashboardPage() {
         try {
             await deleteJob(id, user.id);
             setEditingJob(null);
+            setSelectedJob(null);
+            toast("Application deleted");
             fetchJobs();
         } catch (error) {
             console.error("Failed to delete job:", error);
+            toast("Failed to delete application", "error");
         }
     };
 
@@ -157,13 +168,13 @@ export default function DashboardPage() {
         }
     }, []);
 
-    const fetchKeys = useCallback(async () => {
+    const fetchKeysStatus = useCallback(async () => {
         if (!user) return;
         try {
-            const keys = await getKeysByUser(user.id);
-            setKeys(keys || null);
+            const status = await getKeysStatus();
+            setKeysStatus(status);
         } catch (error) {
-            console.log("Error retrieving api keys", error);
+            console.log("Error retrieving key status", error);
         }
     }, [user]);
 
@@ -174,9 +185,9 @@ export default function DashboardPage() {
             return;
         }
         fetchJobs();
-        fetchKeys();
+        fetchKeysStatus();
         fetchCompanyNames();
-    }, [user, authLoading, router, fetchJobs, fetchKeys, fetchCompanyNames]);
+    }, [user, authLoading, router, fetchJobs, fetchKeysStatus, fetchCompanyNames]);
 
     // Command palette: open Add Application panel when requested
     useEffect(() => {
@@ -214,7 +225,7 @@ export default function DashboardPage() {
                 <div className="absolute bottom-[-10%] left-[20%] w-[40%] h-[60%] bg-cyan-400/20 rounded-full blur-[120px] mix-blend-multiply animate-pulse delay-2000" />
             </div>
 
-            <TopBar keys={keys} />
+            <TopBar keysStatus={keysStatus} onKeysSaved={fetchKeysStatus} />
 
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 md:pt-32 pb-12 relative z-10">
                 {/* Header Section */}
@@ -384,6 +395,7 @@ export default function DashboardPage() {
                         <JobsTable
                             jobs={filteredJobs}
                             onEditJob={setEditingJob}
+                            onRowClick={setSelectedJob}
                             linkedCompanyNames={companyNames}
                             onLinkCompany={setLinkingJob}
                             onViewCompany={(job) => router.push(`/companies?company=${encodeURIComponent(job.company_name)}`)}
@@ -392,7 +404,7 @@ export default function DashboardPage() {
                 ) : (
                     <KanbanBoard
                         jobs={filteredJobs}
-                        onEditJob={setEditingJob}
+                        onEditJob={setSelectedJob}
                         onStageChange={handleStageChange}
                     />
                 )}
@@ -407,7 +419,6 @@ export default function DashboardPage() {
                             setShowAddPanel(false)
                         }}
                         model={selectedModel}
-                        keys={keys}
                     />
                 </>
             )}
@@ -419,11 +430,28 @@ export default function DashboardPage() {
                     onClose={() => setLinkingJob(null)}
                     onLinked={() => {
                         setLinkingJob(null);
+                        setSelectedJob(null);
+                        toast("Application linked to company");
                         fetchJobs();
                         fetchCompanyNames();
                     }}
                 />
             )}
+
+            <JobDetailPanel
+                job={selectedJob}
+                onClose={() => setSelectedJob(null)}
+                onEdit={(job) => {
+                    setSelectedJob(null);
+                    setEditingJob(job);
+                }}
+                companyLinked={selectedJob ? companyNames.has(selectedJob.company_name) : false}
+                onViewCompany={(job) => router.push(`/companies?company=${encodeURIComponent(job.company_name)}`)}
+                onLinkCompany={(job) => {
+                    setSelectedJob(null);
+                    setLinkingJob(job);
+                }}
+            />
 
             {editingJob && (
                 <>

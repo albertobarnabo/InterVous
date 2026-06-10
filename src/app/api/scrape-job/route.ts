@@ -5,6 +5,7 @@ import { extractFieldsWithDeepSeek } from "../../../../lib/backend/llm/deepSeek"
 
 import { JobEntry } from "../../../../lib/types";
 import { extractFieldsWithMistral } from "../../../../lib/backend/llm/mistral";
+import { getUserAndKeys } from "../../../../lib/backend/serverKeys";
 
 export async function POST(request: Request) {
 
@@ -20,7 +21,20 @@ export async function POST(request: Request) {
     }
 
     try {
-        const { url, applied, model, keys } = await request.json();
+        const { url, applied, model } = await request.json();
+
+        // Keys are read server-side from the caller's account — never sent by the browser
+        const auth = await getUserAndKeys(request);
+        if (!auth) {
+            return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+        }
+        const keys = auth.keys;
+        if (!keys) {
+            return NextResponse.json(
+                { error: "No API keys configured. Add one in Configs." },
+                { status: 400 }
+            );
+        }
 
         if (
             !url ||

@@ -1,20 +1,19 @@
 import { useState } from "react";
-import { ApiKeys } from "../../lib/types";
-import { setApiKeys } from "../../lib/keyService";
+import { setApiKeys, KeysStatus, KeyField } from "../../lib/keyService";
 import { useAuth } from "../../contexts/AuthContext";
+import { useToast } from "./Toast";
 import { AiFillOpenAI } from "react-icons/ai";
 import DeepseekIcon from "./DeepSeekIcon";
 import MistralIcon from "./MistralIcon";
 
 interface KeysPanelProps {
-    keys: ApiKeys | null;
+    keysStatus: KeysStatus | null;
     onClose: () => void;
+    onSaved?: () => void;
 }
 
-type FormField = keyof Pick<ApiKeys, "open_ai" | "deep_seek" | "mistral" | "tavily">;
-
 const PROVIDERS: {
-    field: FormField;
+    field: KeyField;
     label: string;
     description: string;
     icon: React.ReactNode;
@@ -50,21 +49,21 @@ const PROVIDERS: {
     },
 ];
 
-export default function KeysPanel({ keys, onClose }: KeysPanelProps) {
+export default function KeysPanel({ keysStatus, onClose, onSaved }: KeysPanelProps) {
     const [loading, setLoading] = useState(false);
-    const [saved, setSaved] = useState(false);
     const [error, setError] = useState("");
     const [visible, setVisible] = useState<Record<string, boolean>>({});
+    const [formData, setFormData] = useState<Record<KeyField, string>>({
+        open_ai: "",
+        deep_seek: "",
+        mistral: "",
+        tavily: "",
+    });
 
     const { user } = useAuth();
+    const { toast } = useToast();
 
-    const [formData, setFormData] = useState<ApiKeys>({
-        user_id: user?.id ?? "",
-        open_ai: keys?.open_ai ?? "",
-        deep_seek: keys?.deep_seek ?? "",
-        mistral: keys?.mistral ?? "",
-        tavily: keys?.tavily ?? "",
-    });
+    const hasChanges = Object.values(formData).some((v) => v.trim());
 
     const handleSubmit = async () => {
         setError("");
@@ -72,8 +71,9 @@ export default function KeysPanel({ keys, onClose }: KeysPanelProps) {
         try {
             if (!user) throw new Error("Not signed in");
             await setApiKeys(user.id, formData);
-            setSaved(true);
-            setTimeout(onClose, 900);
+            toast("API keys saved");
+            onSaved?.();
+            onClose();
         } catch (err) {
             setError("There was a problem while saving your keys. Try again.");
             console.error(err);
@@ -97,7 +97,7 @@ export default function KeysPanel({ keys, onClose }: KeysPanelProps) {
                             <div>
                                 <h2 className="text-xl font-black text-slate-900 tracking-tight">API Keys</h2>
                                 <p className="text-xs text-slate-400 font-semibold mt-0.5">
-                                    Stored per account · used for extraction and research
+                                    Keys stay on the server — the browser only sees whether they exist
                                 </p>
                             </div>
                         </div>
@@ -115,7 +115,7 @@ export default function KeysPanel({ keys, onClose }: KeysPanelProps) {
                     {/* Provider rows */}
                     <div className="px-7 py-5 space-y-4">
                         {PROVIDERS.map(({ field, label, description, icon }) => {
-                            const hasSavedKey = Boolean(keys?.[field]);
+                            const hasSavedKey = Boolean(keysStatus?.[field]);
                             return (
                                 <div key={field} className="space-y-1.5">
                                     <div className="flex items-center justify-between">
@@ -142,11 +142,11 @@ export default function KeysPanel({ keys, onClose }: KeysPanelProps) {
                                         <input
                                             type={visible[field] ? "text" : "password"}
                                             name={field}
-                                            value={formData[field] ?? ""}
+                                            value={formData[field]}
                                             onChange={(e) =>
                                                 setFormData((prev) => ({ ...prev, [field]: e.target.value }))
                                             }
-                                            placeholder={hasSavedKey ? "••••••••••••••••" : `Paste your ${label} key...`}
+                                            placeholder={hasSavedKey ? "Saved — type to replace" : `Paste your ${label} key...`}
                                             autoComplete="off"
                                             className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 pr-11 text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white focus:border-blue-400 transition-all placeholder:text-slate-300"
                                         />
@@ -187,7 +187,7 @@ export default function KeysPanel({ keys, onClose }: KeysPanelProps) {
                     {/* Footer */}
                     <div className="flex items-center justify-between gap-3 px-7 py-4 bg-slate-50/60 border-t border-slate-100">
                         <p className="text-[10px] text-slate-400 font-semibold hidden sm:block">
-                            Keys are saved to your account, not this browser.
+                            Empty fields keep their saved value.
                         </p>
                         <div className="flex items-center gap-2 ml-auto">
                             <button
@@ -198,21 +198,10 @@ export default function KeysPanel({ keys, onClose }: KeysPanelProps) {
                             </button>
                             <button
                                 onClick={handleSubmit}
-                                disabled={loading || saved}
-                                className={`cursor-pointer px-6 py-2.5 rounded-xl text-xs font-black text-white uppercase tracking-widest shadow-lg transition-all active:scale-95 flex items-center gap-2 ${
-                                    saved
-                                        ? "bg-emerald-500 shadow-emerald-500/25"
-                                        : "bg-slate-900 hover:bg-slate-800 shadow-slate-900/20"
-                                }`}
+                                disabled={loading || !hasChanges}
+                                className="cursor-pointer px-6 py-2.5 rounded-xl text-xs font-black text-white uppercase tracking-widest bg-slate-900 hover:bg-slate-800 shadow-lg shadow-slate-900/20 transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
                             >
-                                {saved ? (
-                                    <>
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="3">
-                                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                                        </svg>
-                                        Saved
-                                    </>
-                                ) : loading ? (
+                                {loading ? (
                                     <>
                                         <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
                                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />

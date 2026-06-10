@@ -2,13 +2,13 @@
 
 import { useState } from 'react';
 import { useAuth } from "../../contexts/AuthContext";
-import { ApiKeys } from '../../lib/types';
 import { createJob } from '../../lib/jobService';
+import { supabase } from '../../lib/supbaseClient';
+import { useToast } from './Toast';
 
 interface AddJobPanelProps {
     onClose: () => void;
     model: string;
-    keys: ApiKeys | null;
 }
 
 const STATUSES = ["Active", "Not Applied", "Inactive"];
@@ -28,7 +28,7 @@ function today(): string {
 const inputClasses =
     "w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white focus:border-blue-400 transition-all placeholder:text-slate-300";
 
-export default function AddJobPanel({ onClose, model, keys }: AddJobPanelProps) {
+export default function AddJobPanel({ onClose, model }: AddJobPanelProps) {
     const [mode, setMode] = useState<'link' | 'manual'>('link');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -49,16 +49,26 @@ export default function AddJobPanel({ onClose, model, keys }: AddJobPanelProps) 
     });
 
     const { user } = useAuth();
+    const { toast } = useToast();
 
     const handleExtract = async () => {
         setError('');
         setLoading(true);
 
         try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) {
+                setError("You must be signed in to add an application.");
+                return;
+            }
+
             const res = await fetch('/intervous/api/scrape-job/', {
                 method: 'POST',
-                body: JSON.stringify({ url, applied, model, keys }),
-                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url, applied, model }),
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${session.access_token}`,
+                },
             });
 
             if (!res.ok) {
@@ -75,6 +85,7 @@ export default function AddJobPanel({ onClose, model, keys }: AddJobPanelProps) 
             }
 
             await createJob({ ...data.fullJobEntry, user_id: user.id });
+            toast(`Added ${data.fullJobEntry.company_name} — ${data.fullJobEntry.role}`);
             onClose();
         } catch (err: unknown) {
             setError(err instanceof Error ? err.message : String(err));
@@ -101,6 +112,7 @@ export default function AddJobPanel({ onClose, model, keys }: AddJobPanelProps) 
                 url: manual.url.trim(),
                 user_id: user.id,
             });
+            toast(`Added ${manual.company_name.trim()} — ${manual.role.trim()}`);
             onClose();
         } catch (err: unknown) {
             setError(err instanceof Error ? err.message : String(err));

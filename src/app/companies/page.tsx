@@ -4,8 +4,8 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import TopBar from "@/components/TopBar";
 import { useAuth } from "../../../contexts/AuthContext";
 import { getCompanies, getCompanyTags, getJobCountsByCompanyNames, getCompanyByName } from "../../../lib/backend/companies";
-import { getKeysByUser } from "../../../lib/keyService";
-import { CompanyWithTags, CompanyTag, ApiKeys, SortOption } from "../../../lib/types";
+import { getKeysStatus, KeysStatus } from "../../../lib/keyService";
+import { CompanyWithTags, CompanyTag, SortOption } from "../../../lib/types";
 import CompanyCard from "./components/CompanyCard";
 import CompanyListRow from "./components/CompanyListRow";
 import CompanyDetailPanel from "./components/CompanyDetailPanel";
@@ -31,7 +31,7 @@ export default function CompaniesPage() {
   const [totalCount, setTotalCount] = useState(0);
 
   const [allTags, setAllTags] = useState<CompanyTag[]>([]);
-  const [keys, setKeys] = useState<ApiKeys | null>(null);
+  const [keysStatus, setKeysStatus] = useState<KeysStatus | null>(null);
 
   // Loading State
   const [loadingCompanies, setLoadingCompanies] = useState(true);
@@ -118,12 +118,12 @@ export default function CompaniesPage() {
     if (!user) return;
     const initData = async () => {
       try {
-        const [tagsData, keysData] = await Promise.all([
+        const [tagsData, statusData] = await Promise.all([
           getCompanyTags(),
-          getKeysByUser(user.id),
+          getKeysStatus(),
         ]);
         setAllTags(tagsData);
-        setKeys(keysData || null);
+        setKeysStatus(statusData);
       } catch (error) {
         console.error("Error fetching initial data:", error);
       }
@@ -208,7 +208,7 @@ export default function CompaniesPage() {
         <div className="absolute bottom-[25%] right-[8%] w-[35%] h-[35%] bg-indigo-400/14 rounded-full blur-[110px] animate-pulse delay-500" />
       </div>
 
-      <TopBar keys={keys} />
+      <TopBar keysStatus={keysStatus} onKeysSaved={() => getKeysStatus().then(setKeysStatus)} />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 md:pt-32 pb-12 relative z-10">
         {/* Header Section */}
@@ -543,7 +543,7 @@ export default function CompaniesPage() {
           setSelectedCompany(null);
           handleEdit(company);
         }}
-        tavilyKey={keys?.tavily ?? null}
+        tavilyConfigured={Boolean(keysStatus?.tavily)}
       />
     </div>
   );
