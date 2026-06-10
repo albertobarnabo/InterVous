@@ -543,6 +543,7 @@ export default function CompaniesPage() {
           setSelectedCompany(null);
           handleEdit(company);
         }}
+        tavilyKey={keys?.tavily ?? null}
       />
     </div>
   );

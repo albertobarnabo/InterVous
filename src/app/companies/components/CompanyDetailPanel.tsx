@@ -3,7 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "../../../../lib/supbaseClient";
-import { JobEntry, CompanyWithTags } from "../../../../lib/types";
+import { JobEntry, CompanyWithTags, CompanyInfo } from "../../../../lib/types";
+import { getCompanyInfo, upsertCompanyInfo } from "../../../../lib/backend/companyInfo";
 import { PENDING_ACTION_KEY, EVENT_ADD_APPLICATION } from "@/components/CommandPalette";
 
 interface CompanyDetailPanelProps {
@@ -11,7 +12,24 @@ interface CompanyDetailPanelProps {
   onClose: () => void;
   userId: string;
   onEdit?: (company: CompanyWithTags) => void;
+  tavilyKey?: string | null;
 }
+
+type InfoDraft = {
+  description: string;
+  industry: string;
+  headquarters: string;
+  founded: string;
+  employee_count: string;
+};
+
+const EMPTY_DRAFT: InfoDraft = {
+  description: "",
+  industry: "",
+  headquarters: "",
+  founded: "",
+  employee_count: "",
+};
 
 const STAGE_COLORS: Record<string, string> = {
   Screening: "#60A5FA",
@@ -84,10 +102,104 @@ export default function CompanyDetailPanel({
   onClose,
   userId,
   onEdit,
+  tavilyKey,
 }: CompanyDetailPanelProps) {
   const router = useRouter();
   const [jobs, setJobs] = useState<JobEntry[]>([]);
   const [loading, setLoading] = useState(false);
+
+  // Company info (about section)
+  const [info, setInfo] = useState<CompanyInfo | null>(null);
+  const [editingInfo, setEditingInfo] = useState(false);
+  const [draft, setDraft] = useState<InfoDraft>(EMPTY_DRAFT);
+  const [researching, setResearching] = useState(false);
+  const [savingInfo, setSavingInfo] = useState(false);
+  const [infoError, setInfoError] = useState("");
+
+  useEffect(() => {
+    setInfo(null);
+    setEditingInfo(false);
+    setInfoError("");
+    if (!company) return;
+    let cancelled = false;
+    getCompanyInfo(company.id)
+      .then((data) => {
+        if (!cancelled) setInfo(data);
+      })
+      .catch((err) => console.error("Failed to load company info", err));
+    return () => {
+      cancelled = true;
+    };
+  }, [company]);
+
+  const startEditing = () => {
+    setDraft({
+      description: info?.description ?? "",
+      industry: info?.industry ?? "",
+      headquarters: info?.headquarters ?? "",
+      founded: info?.founded ?? "",
+      employee_count: info?.employee_count ?? "",
+    });
+    setInfoError("");
+    setEditingInfo(true);
+  };
+
+  const handleResearch = async () => {
+    if (!company || !tavilyKey) return;
+    setResearching(true);
+    setInfoError("");
+    try {
+      const res = await fetch("/intervous/api/company-research", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          companyName: company.name,
+          website: company.website,
+          apiKey: tavilyKey,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Research failed");
+      // Pre-fill the edit form so the user reviews before saving
+      setDraft({
+        description: data.description || "",
+        industry: data.industry || "",
+        headquarters: data.headquarters || "",
+        founded: data.founded || "",
+        employee_count: data.employee_count || "",
+      });
+      setEditingInfo(true);
+    } catch (err) {
+      setInfoError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setResearching(false);
+    }
+  };
+
+  const handleSaveInfo = async () => {
+    if (!company) return;
+    setSavingInfo(true);
+    setInfoError("");
+    try {
+      const saved = await upsertCompanyInfo(
+        {
+          company_id: company.id,
+          description: draft.description.trim() || null,
+          industry: draft.industry.trim() || null,
+          headquarters: draft.headquarters.trim() || null,
+          founded: draft.founded.trim() || null,
+          employee_count: draft.employee_count.trim() || null,
+        },
+        userId
+      );
+      setInfo(saved);
+      setEditingInfo(false);
+    } catch (err) {
+      setInfoError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSavingInfo(false);
+    }
+  };
 
   useEffect(() => {
     if (!company) {
@@ -235,6 +347,132 @@ export default function CompanyDetailPanel({
                 </div>
               )}
             </div>
+          </div>
+
+          {/* About section */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                About
+              </h3>
+              {!editingInfo && (
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={handleResearch}
+                    disabled={researching || !tavilyKey}
+                    title={tavilyKey ? "Auto-fill with web search" : "Add a Tavily API key in Configs to enable"}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold bg-gradient-to-r from-violet-500 to-indigo-500 text-white shadow-sm shadow-indigo-500/25 hover:from-violet-600 hover:to-indigo-600 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {researching ? (
+                      <svg className="animate-spin w-3 h-3" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                    ) : (
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                      </svg>
+                    )}
+                    {researching ? "Searching..." : "Auto-fill"}
+                  </button>
+                  <button
+                    onClick={startEditing}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold text-slate-500 hover:text-blue-600 hover:bg-blue-50 border border-slate-200/80 transition-colors cursor-pointer"
+                  >
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                    </svg>
+                    Edit
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {infoError && (
+              <p className="text-xs font-bold text-rose-600 bg-rose-50 border border-rose-100 rounded-xl px-3 py-2">
+                {infoError}
+              </p>
+            )}
+
+            {editingInfo ? (
+              <div className="space-y-2.5 rounded-2xl bg-white/70 border border-white/60 p-4">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Description</label>
+                  <textarea
+                    value={draft.description}
+                    onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }))}
+                    rows={4}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all resize-y"
+                    placeholder="What does this company do?"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-2.5">
+                  {([
+                    ["industry", "Industry"],
+                    ["headquarters", "Headquarters"],
+                    ["founded", "Founded"],
+                    ["employee_count", "Employees"],
+                  ] as [keyof InfoDraft, string][]).map(([field, label]) => (
+                    <div key={field}>
+                      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">{label}</label>
+                      <input
+                        type="text"
+                        value={draft[field]}
+                        onChange={(e) => setDraft((d) => ({ ...d, [field]: e.target.value }))}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all"
+                      />
+                    </div>
+                  ))}
+                </div>
+                <div className="flex justify-end gap-2 pt-1">
+                  <button
+                    onClick={() => { setEditingInfo(false); setInfoError(""); }}
+                    className="px-4 py-2 rounded-xl text-[11px] font-black text-slate-500 hover:bg-slate-100 uppercase tracking-wider transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSaveInfo}
+                    disabled={savingInfo}
+                    className="px-5 py-2 rounded-xl text-[11px] font-black text-white bg-slate-900 hover:bg-slate-800 uppercase tracking-wider transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-2"
+                  >
+                    {savingInfo && (
+                      <svg className="animate-spin w-3 h-3" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                    )}
+                    Save
+                  </button>
+                </div>
+              </div>
+            ) : info && (info.description || info.industry || info.headquarters || info.founded || info.employee_count) ? (
+              <div className="space-y-3">
+                {info.description && (
+                  <p className="text-sm text-slate-600 leading-relaxed">{info.description}</p>
+                )}
+                <div className="grid grid-cols-2 gap-2">
+                  {([
+                    ["Industry", info.industry],
+                    ["Headquarters", info.headquarters],
+                    ["Founded", info.founded],
+                    ["Employees", info.employee_count],
+                  ] as [string, string | null][])
+                    .filter(([, v]) => v)
+                    .map(([label, value]) => (
+                      <div key={label} className="rounded-xl bg-white/60 border border-white/60 px-3 py-2">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{label}</p>
+                        <p className="text-xs font-semibold text-slate-700 mt-0.5">{value}</p>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            ) : (
+              <p className="text-xs text-slate-400 font-medium rounded-xl border border-dashed border-slate-300/60 px-4 py-4 text-center">
+                No company info yet — use <span className="font-bold text-indigo-500">Auto-fill</span> to research it
+                or <span className="font-bold text-slate-500">Edit</span> to add it manually.
+              </p>
+            )}
           </div>
 
           {/* Stats chips */}

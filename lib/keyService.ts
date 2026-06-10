@@ -12,13 +12,19 @@ export async function getKeysByUser(userId: string): Promise<ApiKeys | null> {
 }
 
 export async function setApiKeys(userId: string, keys: ApiKeys) {
+    // upsert: creates the row on first save instead of silently updating nothing
     const { data, error } = await supabase
         .from('keys')
-        .update({
-            open_ai: keys.open_ai,
-            deep_seek: keys.deep_seek
-        })
-        .eq('user_id', userId)
+        .upsert(
+            {
+                user_id: userId,
+                open_ai: keys.open_ai,
+                deep_seek: keys.deep_seek,
+                mistral: keys.mistral,
+                tavily: keys.tavily,
+            },
+            { onConflict: 'user_id' }
+        )
         .select();
 
     if (error) throw new Error(error.message);

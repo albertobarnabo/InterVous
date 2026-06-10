@@ -2,116 +2,229 @@ import { useState } from "react";
 import { ApiKeys } from "../../lib/types";
 import { setApiKeys } from "../../lib/keyService";
 import { useAuth } from "../../contexts/AuthContext";
+import { AiFillOpenAI } from "react-icons/ai";
+import DeepseekIcon from "./DeepSeekIcon";
+import MistralIcon from "./MistralIcon";
 
 interface KeysPanelProps {
     keys: ApiKeys | null;
     onClose: () => void;
 }
 
-type FormField = keyof Pick<ApiKeys, "open_ai" | "deep_seek" | "mistral">;
+type FormField = keyof Pick<ApiKeys, "open_ai" | "deep_seek" | "mistral" | "tavily">;
+
+const PROVIDERS: {
+    field: FormField;
+    label: string;
+    description: string;
+    icon: React.ReactNode;
+}[] = [
+    {
+        field: "open_ai",
+        label: "OpenAI",
+        description: "Job extraction with GPT models",
+        icon: <AiFillOpenAI className="w-5 h-5 text-slate-700" />,
+    },
+    {
+        field: "deep_seek",
+        label: "DeepSeek",
+        description: "Job extraction with DeepSeek",
+        icon: <DeepseekIcon className="w-5 h-5" />,
+    },
+    {
+        field: "mistral",
+        label: "Mistral",
+        description: "Job extraction with Mistral",
+        icon: <MistralIcon className="w-5 h-5" />,
+    },
+    {
+        field: "tavily",
+        label: "Tavily",
+        description: "Web search for company research",
+        icon: (
+            <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3.6 9h16.8M3.6 15h16.8M12 3a15 15 0 010 18M12 3a15 15 0 000 18" />
+            </svg>
+        ),
+    },
+];
 
 export default function KeysPanel({ keys, onClose }: KeysPanelProps) {
-
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState('');
+    const [saved, setSaved] = useState(false);
+    const [error, setError] = useState("");
+    const [visible, setVisible] = useState<Record<string, boolean>>({});
 
     const { user } = useAuth();
 
     const [formData, setFormData] = useState<ApiKeys>({
-        user_id: user?.id ?? '',
-        open_ai: keys?.open_ai ?? '',
-        deep_seek: keys?.deep_seek ?? '',
-        mistral: keys?.mistral ?? '',
+        user_id: user?.id ?? "",
+        open_ai: keys?.open_ai ?? "",
+        deep_seek: keys?.deep_seek ?? "",
+        mistral: keys?.mistral ?? "",
+        tavily: keys?.tavily ?? "",
     });
 
     const handleSubmit = async () => {
-        setError('');
+        setError("");
         setLoading(true);
-
         try {
             if (!user) throw new Error("Not signed in");
-            await setApiKeys(user.id, formData as ApiKeys);
-            onClose();
+            await setApiKeys(user.id, formData);
+            setSaved(true);
+            setTimeout(onClose, 900);
         } catch (err) {
-            setError("There was a problem while submitting your keys. Try again");
-            console.log(err)
+            setError("There was a problem while saving your keys. Try again.");
+            console.error(err);
         } finally {
             setLoading(false);
         }
     };
 
-
-    function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
-        const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
-    }
-
-
     return (
         <div className="fixed inset-0 z-[60] overflow-y-auto bg-slate-900/20 backdrop-blur-md">
-            <div className="flex min-h-full items-center justify-center p-4 md:p-6 text-center">
-                <div className="w-full max-w-2xl glass-panel !bg-white/90 relative animate-in zoom-in-95 duration-300 text-left rounded-[2.5rem] md:rounded-[3.5rem] shadow-2xl">
-                    {/* Decorative background accents */}
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-400/10 rounded-full blur-[80px] -mr-20 -mt-20 -z-10" />
-                    <div className="absolute bottom-0 left-0 w-48 h-48 bg-blue-400/10 rounded-full blur-[60px] -ml-10 -mb-10 -z-10" />
-
-                <div className="relative z-10 p-6 md:p-8">
-                    <header className="mb-8 md:mb-10 text-center">
-                        <div className="inline-flex items-center justify-center w-16 h-16 md:w-20 md:h-20 bg-slate-900 rounded-[1.5rem] md:rounded-[2rem] text-white mb-5 md:mb-6 shadow-xl shadow-slate-900/20">
-                            <svg className="w-7 h-7 md:w-8 md:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" /></svg>
+            <div className="flex min-h-full items-center justify-center p-4 md:p-6">
+                <div className="w-full max-w-xl glass-panel !bg-white/95 relative animate-in zoom-in-95 duration-300 text-left rounded-[2rem] shadow-2xl overflow-hidden">
+                    {/* Header */}
+                    <div className="flex items-center justify-between px-7 pt-7 pb-5 border-b border-slate-100">
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-slate-900/20 shrink-0">
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <h2 className="text-xl font-black text-slate-900 tracking-tight">API Keys</h2>
+                                <p className="text-xs text-slate-400 font-semibold mt-0.5">
+                                    Stored per account · used for extraction and research
+                                </p>
+                            </div>
                         </div>
-                        <h2 className="text-2xl md:text-4xl font-black text-slate-900 tracking-tight leading-tight">AI Command Center</h2>
-                        <p className="text-slate-500 font-bold text-sm md:text-base mt-1 md:mt-2">Deploy your API keys to empower the extraction engine.</p>
-                    </header>
+                        <button
+                            onClick={onClose}
+                            aria-label="Close"
+                            className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+                        >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
 
-                    <div className="space-y-6 md:space-y-8 mb-8 md:mb-10">
-                        {(["open_ai", "deep_seek", "mistral"] as FormField[]).map(field => (
-                            <div key={field} className="space-y-3 group">
-                                <label className="block text-xs font-black text-slate-400 uppercase tracking-[0.2em] ml-2 group-focus-within:text-blue-600 transition-colors">
-                                    {field.replace(/_/g, ' ')} Secure Key
-                                </label>
-                                <div className="relative">
-                                    <input
-                                        type="password"
-                                        name={field}
-                                        value={formData[field] ?? ''}
-                                        onChange={handleChange}
-                                        placeholder="••••••••••••••••"
-                                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl md:rounded-3xl px-6 py-4 md:px-8 md:py-5 text-sm md:text-base font-black text-slate-900 focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:bg-white focus:border-blue-500 transition-all placeholder:text-slate-400 pr-14 md:pr-16"
-                                    />
-                                    <div className="absolute right-6 md:right-8 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors">
-                                        <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                    {/* Provider rows */}
+                    <div className="px-7 py-5 space-y-4">
+                        {PROVIDERS.map(({ field, label, description, icon }) => {
+                            const hasSavedKey = Boolean(keys?.[field]);
+                            return (
+                                <div key={field} className="space-y-1.5">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2.5">
+                                            <div className="w-8 h-8 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center shrink-0">
+                                                {icon}
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-bold text-slate-800 leading-none">{label}</p>
+                                                <p className="text-[11px] text-slate-400 font-medium mt-0.5">{description}</p>
+                                            </div>
+                                        </div>
+                                        <span
+                                            className={`text-[10px] font-bold rounded-full px-2 py-0.5 border ${
+                                                hasSavedKey
+                                                    ? "text-emerald-600 bg-emerald-50 border-emerald-100"
+                                                    : "text-slate-400 bg-slate-50 border-slate-200"
+                                            }`}
+                                        >
+                                            {hasSavedKey ? "Saved" : "Not set"}
+                                        </span>
+                                    </div>
+                                    <div className="relative">
+                                        <input
+                                            type={visible[field] ? "text" : "password"}
+                                            name={field}
+                                            value={formData[field] ?? ""}
+                                            onChange={(e) =>
+                                                setFormData((prev) => ({ ...prev, [field]: e.target.value }))
+                                            }
+                                            placeholder={hasSavedKey ? "••••••••••••••••" : `Paste your ${label} key...`}
+                                            autoComplete="off"
+                                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 pr-11 text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white focus:border-blue-400 transition-all placeholder:text-slate-300"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() =>
+                                                setVisible((prev) => ({ ...prev, [field]: !prev[field] }))
+                                            }
+                                            aria-label={visible[field] ? "Hide key" : "Show key"}
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-600 transition-colors cursor-pointer"
+                                        >
+                                            {visible[field] ? (
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                                                </svg>
+                                            ) : (
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                </svg>
+                                            )}
+                                        </button>
                                     </div>
                                 </div>
-                            </div>
-                        ))}
+                            );
+                        })}
 
                         {error && (
-                            <div className="bg-rose-50 border-2 border-rose-100 text-rose-600 text-xs font-black py-4 px-6 rounded-3xl flex items-center gap-3 animate-in slide-in-from-bottom-2">
-                                <div className="p-1.5 bg-rose-100 rounded-lg">
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                                </div>
+                            <div className="bg-rose-50 border border-rose-100 text-rose-600 text-xs font-bold py-3 px-4 rounded-xl flex items-center gap-2.5 animate-in slide-in-from-bottom-2">
+                                <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
                                 {error}
                             </div>
                         )}
                     </div>
 
-                    <div className="flex flex-col sm:flex-row gap-4 md:gap-6">
-                        <button
-                            onClick={onClose}
-                            className="cursor-pointer flex-1 bg-slate-100/80 text-slate-500 px-8 py-4 md:px-10 md:py-5 rounded-2xl md:rounded-3xl font-black text-xs uppercase tracking-[0.2em] hover:bg-slate-200 transition-all active:scale-95"
-                        >
-                            Not Now
-                        </button>
-                        <button
-                            onClick={handleSubmit}
-                            disabled={loading}
-                            className="cursor-pointer flex-[2] bg-slate-900 text-white px-10 py-4 md:px-12 md:py-5 rounded-2xl md:rounded-3xl font-black text-xs uppercase tracking-[0.2em] shadow-xl shadow-slate-900/20 hover:shadow-2xl hover:shadow-slate-900/30 transition-all transform hover:-translate-y-1 active:scale-95"
-                        >
-                            {loading ? 'Initializing...' : 'Sync Configs'}
-                        </button>
-                    </div>
-                    
+                    {/* Footer */}
+                    <div className="flex items-center justify-between gap-3 px-7 py-4 bg-slate-50/60 border-t border-slate-100">
+                        <p className="text-[10px] text-slate-400 font-semibold hidden sm:block">
+                            Keys are saved to your account, not this browser.
+                        </p>
+                        <div className="flex items-center gap-2 ml-auto">
+                            <button
+                                onClick={onClose}
+                                className="cursor-pointer px-5 py-2.5 rounded-xl text-xs font-black text-slate-500 hover:bg-slate-100 uppercase tracking-widest transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleSubmit}
+                                disabled={loading || saved}
+                                className={`cursor-pointer px-6 py-2.5 rounded-xl text-xs font-black text-white uppercase tracking-widest shadow-lg transition-all active:scale-95 flex items-center gap-2 ${
+                                    saved
+                                        ? "bg-emerald-500 shadow-emerald-500/25"
+                                        : "bg-slate-900 hover:bg-slate-800 shadow-slate-900/20"
+                                }`}
+                            >
+                                {saved ? (
+                                    <>
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="3">
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                        </svg>
+                                        Saved
+                                    </>
+                                ) : loading ? (
+                                    <>
+                                        <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                        </svg>
+                                        Saving...
+                                    </>
+                                ) : (
+                                    "Save Keys"
+                                )}
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>

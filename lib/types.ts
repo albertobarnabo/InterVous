@@ -15,7 +15,19 @@ export type ApiKeys = {
     open_ai: string;
     deep_seek: string;
     mistral: string;
+    tavily: string;
 }
+
+export type CompanyInfo = {
+    company_id: string;
+    description: string | null;
+    industry: string | null;
+    headquarters: string | null;
+    founded: string | null;
+    employee_count: string | null;
+    updated_at?: string;
+    updated_by?: string | null;
+};
 
 export type Company = {
     id: string;
