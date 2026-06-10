@@ -45,6 +45,11 @@ export default function AddJobPanel({ onClose, model, keys }: AddJobPanelProps) 
 
             const data = await res.json()
 
+            if (!user) {
+                setError("You must be signed in to add an application.");
+                return;
+            }
+
             const job = { ...data.fullJobEntry, user_id: user.id }
 
             try {

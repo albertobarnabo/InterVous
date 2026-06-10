@@ -3,34 +3,25 @@
 @source "../../.flowbite-react/class-list.json";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #EFF6FF;
+  --foreground: #1e293b;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-plus-jakarta), var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #ededed;
-    --foreground: #ededed;
-  }
-}
-
 body {
-  background-color: #f8fafc;
+  background-color: #EFF6FF;
   background-image:
-    radial-gradient(at 0% 0%, hsla(253, 16%, 7%, 1) 0, transparent 50%),
-    radial-gradient(at 50% 0%, hsla(225, 39%, 30%, 1) 0, transparent 50%),
-    radial-gradient(at 100% 0%, hsla(339, 49%, 30%, 1) 0, transparent 50%);
-  background-image:
-    radial-gradient(at 40% 20%, rgba(37, 99, 235, 0.1) 0px, transparent 50%),
-    radial-gradient(at 80% 0%, rgba(139, 92, 246, 0.1) 0px, transparent 50%),
-    radial-gradient(at 0% 50%, rgba(56, 189, 248, 0.1) 0px, transparent 50%);
+    radial-gradient(at 15%   5%, rgba( 59, 130, 246, 0.28) 0px, transparent 50%),
+    radial-gradient(at 85%   5%, rgba(139,  92, 246, 0.22) 0px, transparent 50%),
+    radial-gradient(at  0%  60%, rgba( 56, 189, 248, 0.22) 0px, transparent 50%),
+    radial-gradient(at 100% 75%, rgba( 99, 102, 241, 0.18) 0px, transparent 50%),
+    radial-gradient(at 50% 100%, rgba( 37,  99, 235, 0.12) 0px, transparent 50%);
   background-attachment: fixed;
   color: var(--foreground);
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
@@ -38,40 +29,59 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Deep Liquid Glassmorphism Utilities */
+/* ── Glassmorphism Design System ────────────────────────────────── */
+
+/* Floating panel — navbar, filter bars, dialogs */
 .glass-panel {
-  background: rgba(255, 255, 255, 0.65);
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.74);
+  backdrop-filter: blur(28px) saturate(200%);
+  -webkit-backdrop-filter: blur(28px) saturate(200%);
+  border: 1px solid rgba(255, 255, 255, 0.72);
   box-shadow:
-    0 4px 6px -1px rgba(0, 0, 0, 0.02),
-    0 2px 4px -1px rgba(0, 0, 0, 0.02),
-    inset 0 0 20px 0 rgba(255, 255, 255, 0.5);
+    0  8px 32px rgba(0,   0,   0, 0.06),
+    0  2px  8px rgba(0,   0,   0, 0.04),
+    inset 0  1px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.25);
 }
 
+/* Standard content card */
 .glass-card {
-  background: rgba(255, 255, 255, 0.6);
-  backdrop-filter: blur(16px) saturate(180%);
-  -webkit-backdrop-filter: blur(16px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.62);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.68);
   box-shadow:
-    0 10px 30px -10px rgba(37, 99, 235, 0.1),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.4);
+    0 12px 40px rgba(37,  99, 235, 0.08),
+    0  4px 12px rgba(0,    0,   0, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.90);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .glass-card:hover {
-  background: rgba(255, 255, 255, 0.75);
+  background: rgba(255, 255, 255, 0.82);
   box-shadow:
-    0 20px 40px -10px rgba(37, 99, 235, 0.2),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.6);
+    0 24px 60px rgba(37,  99, 235, 0.14),
+    0  8px 24px rgba(0,    0,   0, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  transform: translateY(-3px);
+}
+
+/* Deep glass — hero panels, prominent sections */
+.glass-deep {
+  background: rgba(255, 255, 255, 0.40);
+  backdrop-filter: blur(32px) saturate(220%);
+  -webkit-backdrop-filter: blur(32px) saturate(220%);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.10),
+    inset 0  1px  0 rgba(255, 255, 255, 0.85),
+    inset 0  0  40px rgba(255, 255, 255, 0.15);
 }
 
 .border-gradient-futuristic {
   border: 4px solid transparent;
   background-image:
     linear-gradient(white, white),
-    /* inner fill */
     linear-gradient(90deg, #000000, rgba(22, 22, 163, 0.804), #1aa0a4);
   background-origin: border-box;
   background-clip: padding-box, border-box;

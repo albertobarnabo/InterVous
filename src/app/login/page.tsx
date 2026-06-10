@@ -16,7 +16,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (user?.isAuthenticated) {
+    if (user) {
       router.push("/dashboard/");
     }
   }, [user, router]);
@@ -42,113 +42,96 @@ export default function LoginPage() {
       {/* SVG Filter for Glass Distortion */}
       <svg style={{ display: "none" }}>
         <filter id="glass-distortion">
-          <feTurbulence
-            type="turbulence"
-            baseFrequency="0.008"
-            numOctaves="2"
-            result="noise"
-          />
+          <feTurbulence type="turbulence" baseFrequency="0.008" numOctaves="2" result="noise" />
           <feDisplacementMap in="SourceGraphic" in2="noise" scale="77" />
         </filter>
       </svg>
 
       <style jsx>{`
         @keyframes floatDistort {
-          0% {
-            background-position: 0% 0%;
-          }
-          50% {
-            background-position: 100% 100%;
-          }
-          100% {
-            background-position: 0% 0%;
-          }
+          0%   { background-position: 0% 0%; }
+          50%  { background-position: 100% 100%; }
+          100% { background-position: 0% 0%; }
         }
         .glass-distortion-overlay {
           background:
-            radial-gradient(
-              circle at 20% 30%,
-              rgba(255, 255, 255, 0.05) 0%,
-              transparent 80%
-            ),
-            radial-gradient(
-              circle at 80% 70%,
-              rgba(255, 255, 255, 0.05) 0%,
-              transparent 80%
-            );
+            radial-gradient(circle at 20% 30%, rgba(255,255,255,0.06) 0%, transparent 80%),
+            radial-gradient(circle at 80% 70%, rgba(255,255,255,0.06) 0%, transparent 80%);
           background-size: 300% 300%;
           animation: floatDistort 10s infinite ease-in-out;
           mix-blend-mode: overlay;
         }
+        @keyframes blobFloat {
+          0%, 100% { transform: translateY(0px) scale(1); }
+          33%  { transform: translateY(-20px) scale(1.04); }
+          66%  { transform: translateY(10px) scale(0.97); }
+        }
+        .blob-1 { animation: blobFloat 12s ease-in-out infinite; }
+        .blob-2 { animation: blobFloat 15s ease-in-out infinite 2s; }
+        .blob-3 { animation: blobFloat 10s ease-in-out infinite 4s; }
+        .blob-4 { animation: blobFloat 14s ease-in-out infinite 1s; }
       `}</style>
 
-      <div className="min-h-screen w-full flex items-center justify-center relative bg-slate-50 overflow-hidden selection:bg-blue-500/30">
-        {/* Main card container with nature background */}
-        <div className="max-w-md w-full mx-4 relative overflow-hidden rounded-[2.5rem] md:rounded-[3.5rem] shadow-[0_6px_24px_rgba(0,0,0,0.2)]">
-          {/* Nature background image */}
-          <div
-            className="absolute inset-0 bg-cover bg-center"
-            style={{
-              backgroundImage: `url(${background.src})`,
-            }}
-          />
+      <div className="min-h-screen w-full flex items-center justify-center relative overflow-hidden selection:bg-blue-500/30">
+        {/* Animated background blobs */}
+        <div className="fixed inset-0 overflow-hidden pointer-events-none -z-10">
+          <div className="blob-1 absolute top-[-18%] left-[-12%] w-[60%] h-[60%] bg-blue-400/30 rounded-full blur-[140px]" />
+          <div className="blob-2 absolute top-[5%] right-[-15%] w-[55%] h-[55%] bg-purple-400/24 rounded-full blur-[140px]" />
+          <div className="blob-3 absolute bottom-[-15%] left-[8%] w-[55%] h-[60%] bg-cyan-400/24 rounded-full blur-[140px]" />
+          <div className="blob-4 absolute bottom-[15%] right-[5%] w-[40%] h-[40%] bg-indigo-400/18 rounded-full blur-[120px]" />
+        </div>
 
-          {/* Overlay for better contrast */}
-          <div className="absolute inset-0 bg-gradient-to-br from-black/10 via-transparent to-black/10"></div>
+        {/* Card container with nature background */}
+        <div className="max-w-md w-full mx-4 relative overflow-hidden rounded-[2.5rem] md:rounded-[3.5rem] shadow-[0_24px_80px_rgba(37,99,235,0.20),0_8px_32px_rgba(0,0,0,0.12)]">
+          {/* Nature background image */}
+          <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${background.src})` }} />
+
+          {/* Gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-900/8 via-transparent to-purple-900/8" />
 
           {/* Padding container */}
           <div className="relative p-4 md:p-5">
-            {/* Glass container with layered effects */}
+            {/* Layered glass container */}
             <div className="relative overflow-hidden rounded-[2.25rem] md:rounded-[3rem]">
-              {/* Glass filter layer */}
+              {/* Distortion layer */}
               <div
                 className="absolute inset-0 rounded-[2.25rem] md:rounded-[3rem] z-[1]"
-                style={{
-                  backdropFilter: "blur(4px)",
-                  filter:
-                    "url(#glass-distortion) saturate(120%) brightness(1.15)",
-                }}
+                style={{ backdropFilter: "blur(4px)", filter: "url(#glass-distortion) saturate(130%) brightness(1.12)" }}
               />
 
-              {/* Distortion overlay animation */}
+              {/* Animated distortion overlay */}
               <div className="glass-distortion-overlay absolute inset-0 rounded-[2.25rem] md:rounded-[3rem] z-[2] pointer-events-none" />
 
-              {/* Glass overlay */}
-              <div className="absolute inset-0 rounded-[2.25rem] md:rounded-[3rem] z-[2] bg-white/25" />
+              {/* Primary glass layer */}
+              <div className="absolute inset-0 rounded-[2.25rem] md:rounded-[3rem] z-[2] bg-white/28" />
 
-              {/* Glass specular highlight */}
+              {/* Specular highlight */}
               <div
                 className="absolute inset-0 rounded-[2.25rem] md:rounded-[3rem] z-[3]"
-                style={{
-                  boxShadow: "inset 1px 1px 1px rgba(255, 255, 255, 0.75)",
-                }}
+                style={{ boxShadow: "inset 1px 1px 1px rgba(255,255,255,0.80), inset -1px -1px 1px rgba(255,255,255,0.10)" }}
               />
 
-              {/* Content layer */}
+              {/* Content */}
               <div className="relative z-[4] p-8 md:p-10 lg:p-12 animate-in zoom-in-95 duration-500">
+                {/* Logo + Brand */}
                 <div className="flex flex-col items-center mb-8 md:mb-10">
-                  <div className="w-20 h-20 md:w-24 md:h-24 mb-5 md:mb-6 transform -rotate-3 hover:rotate-0 transition-transform duration-500 overflow-hidden shadow-xl shadow-black/10 rounded-[1.75rem] md:rounded-[2rem] backdrop-blur-md bg-white/90 border border-white/60">
+                  <div className="w-20 h-20 md:w-24 md:h-24 mb-5 md:mb-6 transform -rotate-3 hover:rotate-0 transition-transform duration-500 overflow-hidden shadow-[0_12px_40px_rgba(0,0,0,0.14)] rounded-[1.75rem] md:rounded-[2rem] backdrop-blur-md bg-white/92 border border-white/65">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={logo.src}
-                      alt="Intervous Logo"
-                      className="w-full h-full object-contain"
-                    />
+                    <img src={logo.src} alt="Intervous Logo" className="w-full h-full object-contain" />
                   </div>
-                  <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight leading-tight italic drop-shadow-sm">
+
+                  <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight leading-tight italic drop-shadow-sm">
                     INTERVOUS
                   </h1>
-                  <p className="text-slate-800 mt-2 text-center font-bold text-sm md:text-base drop-shadow-sm">
+                  <p className="text-slate-700 mt-2 text-center font-semibold text-sm md:text-base drop-shadow-sm">
                     Continue your professional adventure.
                   </p>
                 </div>
 
-                <form
-                  onSubmit={handleSubmit}
-                  className="space-y-5 md:space-y-6"
-                >
+                {/* Form */}
+                <form onSubmit={handleSubmit} className="space-y-5 md:space-y-6">
                   <div className="space-y-2 md:space-y-3">
-                    <label className="text-xs font-black text-slate-700 uppercase tracking-[0.2em] ml-3 drop-shadow-sm">
+                    <label className="text-[11px] font-extrabold text-slate-700 uppercase tracking-[0.18em] ml-3 drop-shadow-sm">
                       Access Email
                     </label>
                     <input
@@ -157,12 +140,12 @@ export default function LoginPage() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
-                      className="w-full backdrop-blur-md bg-white/60 border border-white/60 rounded-2xl md:rounded-3xl px-6 py-4 md:px-8 md:py-5 text-sm md:text-base font-bold text-slate-900 focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:bg-white/80 focus:border-white/80 transition-all placeholder:text-slate-500 shadow-sm"
+                      className="w-full backdrop-blur-md bg-white/62 border border-white/65 rounded-2xl md:rounded-3xl px-6 py-4 md:px-8 md:py-5 text-sm md:text-base font-semibold text-slate-900 focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:bg-white/82 focus:border-white/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] transition-all duration-200 placeholder:text-slate-400/80"
                     />
                   </div>
 
                   <div className="space-y-2 md:space-y-3">
-                    <label className="text-xs font-black text-slate-700 uppercase tracking-[0.2em] ml-3 drop-shadow-sm">
+                    <label className="text-[11px] font-extrabold text-slate-700 uppercase tracking-[0.18em] ml-3 drop-shadow-sm">
                       Password
                     </label>
                     <input
@@ -171,73 +154,38 @@ export default function LoginPage() {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
-                      className="w-full backdrop-blur-md bg-white/60 border border-white/60 rounded-2xl md:rounded-3xl px-6 py-4 md:px-8 md:py-5 text-sm md:text-base font-bold text-slate-900 focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:bg-white/80 focus:border-white/80 transition-all placeholder:text-slate-500 shadow-sm"
+                      className="w-full backdrop-blur-md bg-white/62 border border-white/65 rounded-2xl md:rounded-3xl px-6 py-4 md:px-8 md:py-5 text-sm md:text-base font-semibold text-slate-900 focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:bg-white/82 focus:border-white/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] transition-all duration-200 placeholder:text-slate-400/80"
                     />
                   </div>
 
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-full py-4 md:py-5 px-6 font-black rounded-2xl md:rounded-3xl text-xs uppercase tracking-[0.2em] text-white bg-slate-900/90 hover:bg-slate-900 backdrop-blur-md shadow-xl shadow-slate-900/20 hover:shadow-2xl hover:shadow-slate-900/30 transition-all transform hover:-translate-y-1 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-3 overflow-hidden group mt-4 border border-white/20"
+                    className="w-full py-4 md:py-5 px-6 mt-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 font-extrabold rounded-2xl md:rounded-3xl text-xs uppercase tracking-[0.18em] text-white shadow-[0_8px_32px_rgba(37,99,235,0.35)] hover:shadow-[0_12px_40px_rgba(37,99,235,0.45)] transition-all duration-300 transform hover:-translate-y-1 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-3 border border-white/20"
                   >
                     {loading ? (
                       <>
-                        <svg
-                          className="animate-spin h-5 w-5 text-white"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                        >
-                          <circle
-                            className="opacity-25"
-                            cx="12"
-                            cy="12"
-                            r="10"
-                            stroke="currentColor"
-                            strokeWidth="4"
-                          ></circle>
-                          <path
-                            className="opacity-75"
-                            fill="currentColor"
-                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                          ></path>
+                        <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                         </svg>
                         <span>Authenticating...</span>
                       </>
                     ) : (
                       <>
                         <span>Log In</span>
-                        <svg
-                          className="w-5 h-5 group-hover:translate-x-1 transition-transform"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth="3"
-                            d="M13 7l5 5m0 0l-5 5m5-5H6"
-                          />
+                        <svg className="w-5 h-5 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 7l5 5m0 0l-5 5m5-5H6" />
                         </svg>
                       </>
                     )}
                   </button>
 
                   {errorMsg && (
-                    <div className="backdrop-blur-md bg-rose-100/80 border-2 border-rose-200/60 text-rose-700 text-[11px] font-black py-4 px-6 rounded-2xl md:rounded-3xl flex items-center gap-3 animate-in shake-in shadow-lg">
-                      <div className="p-1.5 bg-rose-200/80 rounded-lg">
-                        <svg
-                          className="w-4 h-4"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth="3"
-                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                          />
+                    <div className="backdrop-blur-md bg-rose-100/80 border-2 border-rose-200/60 text-rose-700 text-[11px] font-bold py-4 px-6 rounded-2xl md:rounded-3xl flex items-center gap-3 shadow-[0_4px_20px_rgba(244,63,94,0.15)] animate-in slide-in-from-top-2 duration-300">
+                      <div className="p-1.5 bg-rose-200/80 rounded-lg shrink-0">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                         </svg>
                       </div>
                       {errorMsg}

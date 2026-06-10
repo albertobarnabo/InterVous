@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from "../../../../contexts/AuthContext";
-import { createCompany, getCompanyTags, updateCompany } from '../../../../lib/backend/companies';
+import { createCompany, createCompanyTag, getCompanyTags, updateCompany } from '../../../../lib/backend/companies';
 import { CompanyTag, CompanyWithTags } from '../../../../lib/types';
 import { Listbox, ListboxButton, ListboxOption, ListboxOptions } from '@headlessui/react';
 
@@ -20,11 +20,8 @@ export default function AddCompanyModal({ onClose, onSuccess, initialData }: Add
     const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
-
-
-    // New tag creation
-    // const [newTagName, setNewTagName] = useState('');
-    // const [isCreatingTag, setIsCreatingTag] = useState(false);
+    const [newTagName, setNewTagName] = useState('');
+    const [isCreatingTag, setIsCreatingTag] = useState(false);
 
     useEffect(() => {
         loadTags();
@@ -73,6 +70,22 @@ export default function AddCompanyModal({ onClose, onSuccess, initialData }: Add
             }
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleCreateTag = async () => {
+        const trimmed = newTagName.trim();
+        if (!trimmed) return;
+        setIsCreatingTag(true);
+        try {
+            const newTag = await createCompanyTag(trimmed, null);
+            setAvailableTags(prev => [...prev, newTag].sort((a, b) => a.name.localeCompare(b.name)));
+            setSelectedTagIds(prev => [...prev, newTag.id]);
+            setNewTagName('');
+        } catch (err) {
+            console.error('Failed to create tag', err);
+        } finally {
+            setIsCreatingTag(false);
         }
     };
 
@@ -207,6 +220,30 @@ export default function AddCompanyModal({ onClose, onSuccess, initialData }: Add
                                         })}
                                     </div>
                                 )}
+
+                                <div className="flex items-center gap-2 mt-3">
+                                    <input
+                                        type="text"
+                                        value={newTagName}
+                                        onChange={(e) => setNewTagName(e.target.value)}
+                                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleCreateTag(); } }}
+                                        placeholder="Create new tag..."
+                                        className="flex-1 bg-slate-50 border border-slate-200 rounded-2xl px-4 py-2.5 text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all placeholder:text-slate-400"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={handleCreateTag}
+                                        disabled={!newTagName.trim() || isCreatingTag}
+                                        className="shrink-0 px-4 py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-600 font-bold text-sm rounded-2xl border border-blue-100 transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex items-center gap-1.5"
+                                    >
+                                        {isCreatingTag ? (
+                                            <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                                        ) : (
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4"/></svg>
+                                        )}
+                                        Add
+                                    </button>
+                                </div>
 
                             {error && (
                                 <div className="bg-rose-50 border-2 border-rose-100 text-rose-600 text-xs font-black py-4 px-6 rounded-2xl flex items-center gap-3 animate-in slide-in-from-bottom-2">

@@ -1,12 +1,14 @@
 
 import { supabase } from '../supbaseClient';
-import { Company, CompanyTag, CompanyWithTags } from '../types';
+import { Company, CompanyTag, CompanyWithTags, SortOption } from '../types';
 
 export async function getCompanies(
     page: number = 1,
     pageSize: number = 20,
     searchQuery: string = '',
-    tagId: string | null = null
+    tagId: string | null = null,
+    sortBy: SortOption = 'name_asc',
+    letter: string | null = null
 ): Promise<{ data: CompanyWithTags[]; count: number }> {
     const from = (page - 1) * pageSize;
     const to = from + pageSize - 1;
@@ -28,8 +30,16 @@ export async function getCompanies(
         query = query.ilike('name', `%${searchQuery}%`);
     }
 
+    if (letter) {
+        query = query.ilike('name', `${letter}%`);
+    }
+
+    // 'shuffle' orders by uuid: effectively random but stable, so pages never repeat
+    const orderColumn = sortBy === 'recent' ? 'created_at' : sortBy === 'shuffle' ? 'id' : 'name';
+    const ascending = sortBy !== 'name_desc';
+
     const { data: companies, error, count } = await query
-        .order('name')
+        .order(orderColumn, { ascending })
         .range(from, to);
 
     if (error) throw new Error(error.message);
@@ -128,6 +138,57 @@ export async function createCompanyTag(name: string, description: string | null)
 
     if (error) throw new Error(error.message);
     return data;
+}
+
+export async function getCompanyByName(name: string): Promise<CompanyWithTags | null> {
+    const { data: company, error } = await supabase
+        .from('companies')
+        .select('*')
+        .eq('name', name)
+        .maybeSingle();
+
+    if (error) throw new Error(error.message);
+    if (!company) return null;
+
+    const { data: tagMaps, error: tagError } = await supabase
+        .from('company_tag_map')
+        .select('tag_id, company_tags(id, name, description)')
+        .eq('company_id', company.id);
+
+    if (tagError) throw new Error(tagError.message);
+
+    const tags = (tagMaps || []).map((m) => m.company_tags) as unknown as CompanyTag[];
+    return { ...company, tags };
+}
+
+export async function getAllCompanyNames(): Promise<string[]> {
+    const { data, error } = await supabase
+        .from('companies')
+        .select('name');
+
+    if (error) throw new Error(error.message);
+    return (data || []).map((r) => r.name);
+}
+
+export async function getJobCountsByCompanyNames(
+    companyNames: string[],
+    userId: string
+): Promise<Record<string, number>> {
+    if (companyNames.length === 0) return {};
+
+    const { data, error } = await supabase
+        .from('jobs')
+        .select('company_name')
+        .eq('user_id', userId)
+        .in('company_name', companyNames);
+
+    if (error) throw new Error(error.message);
+
+    const counts: Record<string, number> = {};
+    for (const row of data || []) {
+        counts[row.company_name] = (counts[row.company_name] || 0) + 1;
+    }
+    return counts;
 }
 
 export async function updateCompany(id: string, company: Partial<Omit<Company, 'id' | 'created_by'>>, tagIds: string[]): Promise<void> {

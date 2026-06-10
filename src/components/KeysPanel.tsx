@@ -18,7 +18,7 @@ export default function KeysPanel({ keys, onClose }: KeysPanelProps) {
     const { user } = useAuth();
 
     const [formData, setFormData] = useState<ApiKeys>({
-        user_id: user.id,
+        user_id: user?.id ?? '',
         open_ai: keys?.open_ai ?? '',
         deep_seek: keys?.deep_seek ?? '',
         mistral: keys?.mistral ?? '',
@@ -29,6 +29,7 @@ export default function KeysPanel({ keys, onClose }: KeysPanelProps) {
         setLoading(true);
 
         try {
+            if (!user) throw new Error("Not signed in");
             await setApiKeys(user.id, formData as ApiKeys);
             onClose();
         } catch (err) {

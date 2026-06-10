@@ -10,6 +10,7 @@ import { ApiKeys } from '../../lib/types';
 import logo from '../../public/intervous_logo.png';
 import { getProfile } from '../../lib/backend/profiles';
 import AvatarUploadModal from './AvatarUploadModal';
+import CommandPalette from './CommandPalette';
 
 interface TopBarProps {
     keys: ApiKeys | null;
@@ -50,7 +51,7 @@ export default function TopBar({ keys }: TopBarProps) {
 
     return (
         <>
-            <header className="w-full glass-panel !rounded-none !border-x-0 !border-t-0 shadow-[0_4px_30px_rgba(0,0,0,0.03)] sticky top-0 z-[100] flex items-center justify-between py-3 md:py-4 px-4 md:px-12 bg-white/70">
+            <header className="fixed top-4 inset-x-4 z-[100] glass-panel rounded-[2rem] shadow-[0_8px_40px_rgba(0,0,0,0.08),0_2px_8px_rgba(0,0,0,0.04)] flex items-center justify-between py-3 md:py-4 px-4 md:px-8">
                 {/* Left: Logo */}
                 <div 
                     className="flex items-center gap-2 md:gap-4 cursor-pointer group" 
@@ -108,6 +109,18 @@ export default function TopBar({ keys }: TopBarProps) {
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" /></svg>
                         </div>
                         Configs
+                    </button>
+
+                    {/* Command palette trigger */}
+                    <button
+                        onClick={() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))}
+                        className="cursor-pointer hidden md:flex items-center gap-2 px-3.5 py-2.5 rounded-2xl bg-white/50 hover:bg-white/80 border border-white/60 text-slate-400 hover:text-slate-600 transition-all duration-200 shadow-sm"
+                        title="Open command palette"
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z" />
+                        </svg>
+                        <kbd className="text-[10px] font-black tracking-wide">⌘K</kbd>
                     </button>
 
                     <div className="w-px h-8 bg-slate-200/60 hidden md:block" />
@@ -215,7 +228,7 @@ export default function TopBar({ keys }: TopBarProps) {
                         className="fixed inset-0 bg-slate-900/20 backdrop-blur-sm z-[90] md:hidden"
                         onClick={() => setMobileMenuOpen(false)}
                     />
-                    <div className="fixed top-[4.5rem] left-0 right-0 glass-panel rounded-b-[2rem] shadow-2xl z-[95] p-4 mx-4 animate-in slide-in-from-top-4 duration-300 md:hidden">
+                    <div className="fixed top-24 inset-x-4 z-[95] glass-panel rounded-[2rem] shadow-[0_8px_40px_rgba(0,0,0,0.10)] p-4 animate-in slide-in-from-top-4 duration-300 md:hidden">
                         <nav className="space-y-2">
                             <button
                                 onClick={() => {
@@ -266,6 +279,8 @@ export default function TopBar({ keys }: TopBarProps) {
                     />
                 </>
             )}
+
+            <CommandPalette />
 
             {showAvatarModal && (
                 <AvatarUploadModal

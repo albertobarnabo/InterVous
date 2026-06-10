@@ -1,17 +1,22 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 
 import TopBar from '@/components/TopBar';
 import EditJobPanel from '@/components/EditJobPanel';
 import JobsTable from '@/components/JobsTable';
 import AddJobPanel from '@/components/AddJobPanel';
+import StatsOverview from '@/components/StatsOverview';
+import KanbanBoard from '@/components/KanbanBoard';
+import LinkCompanyModal from '@/components/LinkCompanyModal';
+import { PENDING_ACTION_KEY, EVENT_ADD_APPLICATION } from '@/components/CommandPalette';
 
 import { useAuth } from '../../../contexts/AuthContext';
 
 import { getJobsByUser, updateJob, deleteJob } from '../../../lib/jobService';
 import { getKeysByUser } from '../../../lib/keyService';
+import { getAllCompanyNames } from '../../../lib/backend/companies';
 
 import { ApiKeys, JobEntry } from '../../../lib/types';
 
@@ -39,9 +44,32 @@ const models = [
     }
 ];
 
+const STATUS_FILTERS = ["All", "Active", "Not Applied", "Inactive"];
+
+function exportJobsToCsv(jobs: JobEntry[]) {
+    const headers = ["Company", "Role", "Location", "Applied On", "Status", "Stage", "URL"];
+    const escape = (value: string | null) => {
+        const s = value ?? "";
+        return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const rows = jobs.map((j) =>
+        [j.company_name, j.role, j.location, j.application_date, j.status, j.stage, j.url]
+            .map(escape)
+            .join(",")
+    );
+    const csv = [headers.join(","), ...rows].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `intervous-applications-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+}
+
 export default function DashboardPage() {
 
-    const { user } = useAuth();
+    const { user, loading: authLoading } = useAuth();
     const router = useRouter();
     const [jobs, setJobs] = useState<JobEntry[]>([]);
     const [keys, setKeys] = useState<ApiKeys | null>(null);
@@ -50,6 +78,16 @@ export default function DashboardPage() {
     // Panels
     const [showAddPanel, setShowAddPanel] = useState(false);
     const [editingJob, setEditingJob] = useState<JobEntry | null>(null);
+    const [linkingJob, setLinkingJob] = useState<JobEntry | null>(null);
+
+    // Company linkage
+    const [companyNames, setCompanyNames] = useState<Set<string>>(new Set());
+
+    // Filters & view
+    const [searchQuery, setSearchQuery] = useState('');
+    const [statusFilter, setStatusFilter] = useState('All');
+    const [viewMode, setViewMode] = useState<'table' | 'board'>('table');
+    const [showInsights, setShowInsights] = useState(true);
 
     const handleUpdateJob = async (updatedJob: JobEntry) => {
         if (!user) return;
@@ -59,6 +97,18 @@ export default function DashboardPage() {
             fetchJobs();
         } catch (error) {
             console.error("Failed to update job:", error);
+        }
+    };
+
+    const handleStageChange = async (job: JobEntry, newStage: string) => {
+        if (!user) return;
+        // Optimistic update so the card lands in its new column instantly
+        setJobs((prev) => prev.map((j) => (j.id === job.id ? { ...j, stage: newStage } : j)));
+        try {
+            await updateJob({ ...job, stage: newStage }, user.id);
+        } catch (error) {
+            console.error("Failed to move application:", error);
+            setJobs((prev) => prev.map((j) => (j.id === job.id ? { ...j, stage: job.stage } : j)));
         }
     };
 
@@ -73,11 +123,20 @@ export default function DashboardPage() {
         }
     };
 
-    const [searchQuery, setSearchQuery] = useState('');
-
-    const filteredJobs = jobs.filter(job =>
-        job.company_name.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const filteredJobs = useMemo(() => {
+        const q = searchQuery.toLowerCase();
+        return jobs.filter((job) => {
+            const matchesSearch =
+                !q ||
+                job.company_name.toLowerCase().includes(q) ||
+                job.role?.toLowerCase().includes(q) ||
+                job.location?.toLowerCase().includes(q);
+            const matchesStatus =
+                statusFilter === 'All' ||
+                job.status?.toLowerCase() === statusFilter.toLowerCase();
+            return matchesSearch && matchesStatus;
+        });
+    }, [jobs, searchQuery, statusFilter]);
 
     const fetchJobs = useCallback(async () => {
         if (!user) return;
@@ -88,6 +147,15 @@ export default function DashboardPage() {
             console.log("Error retrieving jobs", error);
         }
     }, [user]);
+
+    const fetchCompanyNames = useCallback(async () => {
+        try {
+            const names = await getAllCompanyNames();
+            setCompanyNames(new Set(names));
+        } catch (error) {
+            console.log("Error retrieving company names", error);
+        }
+    }, []);
 
     const fetchKeys = useCallback(async () => {
         if (!user) return;
@@ -100,14 +168,42 @@ export default function DashboardPage() {
     }, [user]);
 
     useEffect(() => {
+        if (authLoading) return;
         if (!user) {
             router.push("/login");
             return;
         }
         fetchJobs();
         fetchKeys();
-    }, [user, router, fetchJobs, fetchKeys]);
+        fetchCompanyNames();
+    }, [user, authLoading, router, fetchJobs, fetchKeys, fetchCompanyNames]);
 
+    // Command palette: open Add Application panel when requested
+    useEffect(() => {
+        const openAdd = () => {
+            sessionStorage.removeItem(PENDING_ACTION_KEY);
+            setShowAddPanel(true);
+        };
+        if (sessionStorage.getItem(PENDING_ACTION_KEY) === EVENT_ADD_APPLICATION) {
+            openAdd();
+        }
+        window.addEventListener(EVENT_ADD_APPLICATION, openAdd);
+        return () => window.removeEventListener(EVENT_ADD_APPLICATION, openAdd);
+    }, []);
+
+    if (authLoading || !user) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <div className="glass-panel rounded-[2rem] px-8 py-6 flex items-center gap-4">
+                    <svg className="animate-spin w-6 h-6 text-blue-600" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    <span className="text-sm font-bold text-slate-600">Loading your workspace...</span>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen relative overflow-x-hidden">
@@ -120,9 +216,9 @@ export default function DashboardPage() {
 
             <TopBar keys={keys} />
 
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-12 relative z-10">
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 md:pt-32 pb-12 relative z-10">
                 {/* Header Section */}
-                <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 md:mb-12 gap-4 md:gap-6">
+                <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 md:mb-10 gap-4 md:gap-6">
                     <div>
                         <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-slate-900 tracking-tight leading-none mb-3 md:mb-4">
                             Track your next <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600">Career Move</span>
@@ -134,7 +230,7 @@ export default function DashboardPage() {
 
                     <button
                         onClick={() => setShowAddPanel(true)}
-                        className='bg-slate-900 hover:bg-slate-800 text-white font-bold px-6 py-3 md:px-8 md:py-4 rounded-2xl cursor-pointer shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 hover:scale-[1.02] active:scale-[0.98] flex items-center gap-2 md:gap-3 ring-1 ring-white/20 text-sm md:text-base whitespace-nowrap'
+                        className='bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold px-6 py-3 md:px-8 md:py-4 rounded-2xl cursor-pointer shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/35 transition-all duration-300 transform hover:-translate-y-1 hover:scale-[1.02] active:scale-[0.98] flex items-center gap-2 md:gap-3 text-sm md:text-base whitespace-nowrap'
                     >
                         <div className="w-5 h-5 md:w-6 md:h-6 bg-white/20 rounded-lg flex items-center justify-center">
                             <svg className="w-3 h-3 md:w-4 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 4v16m8-8H4" /></svg>
@@ -143,8 +239,25 @@ export default function DashboardPage() {
                     </button>
                 </div>
 
+                {/* Insights */}
+                <div className="mb-8 md:mb-10">
+                    <button
+                        onClick={() => setShowInsights((v) => !v)}
+                        className="flex items-center gap-2 mb-4 text-xs font-black text-slate-500 hover:text-blue-600 uppercase tracking-widest transition-colors cursor-pointer"
+                    >
+                        <svg
+                            className={`w-4 h-4 transition-transform duration-300 ${showInsights ? 'rotate-90' : ''}`}
+                            fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="3"
+                        >
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                        </svg>
+                        Insights
+                    </button>
+                    {showInsights && <StatsOverview jobs={jobs} />}
+                </div>
+
                 {/* Filters & Controls Area */}
-                <div className="glass-panel rounded-[2rem] p-3 mb-10 sticky top-24 z-40">
+                <div className="glass-panel rounded-[2rem] p-3 mb-6 sticky top-28 z-40">
                     <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-2">
                         {/* Search Filter */}
                         <div className="flex-1 relative group">
@@ -159,7 +272,7 @@ export default function DashboardPage() {
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 className="block w-full p-4 ps-14 text-base text-slate-800 border-none bg-transparent focus:ring-0 placeholder:text-slate-400 font-bold"
-                                placeholder="Quickly filter by company..."
+                                placeholder="Filter by company, role or location..."
                             />
                         </div>
 
@@ -170,7 +283,7 @@ export default function DashboardPage() {
                         <div className="flex items-center min-w-[280px]">
                             <Listbox value={selectedModel} onChange={setSelectedModel}>
                                 <div className="relative w-full">
-                                    <ListboxButton className="cursor-pointer text-sm font-bold text-slate-700 
+                                    <ListboxButton className="cursor-pointer text-sm font-bold text-slate-700
                                         px-6 py-4 w-full rounded-2xl hover:bg-slate-50/50
                                         flex items-center justify-between gap-3
                                         transition-all duration-200">
@@ -206,9 +319,83 @@ export default function DashboardPage() {
                     </div>
                 </div>
 
-                <div className="glass-panel !rounded-[2.5rem] overflow-hidden min-h-[500px]">
-                    <JobsTable jobs={filteredJobs} onEditJob={setEditingJob} />
+                {/* Status chips + view toggle + export */}
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+                    <div className="flex items-center gap-2 flex-wrap">
+                        {STATUS_FILTERS.map((status) => (
+                            <button
+                                key={status}
+                                onClick={() => setStatusFilter(status)}
+                                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer
+                                    ${statusFilter === status
+                                        ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20'
+                                        : 'glass-deep text-slate-600 hover:bg-white/60'}`}
+                            >
+                                {status}
+                                {status !== 'All' && (
+                                    <span className={`ml-2 tabular-nums ${statusFilter === status ? 'text-white/60' : 'text-slate-400'}`}>
+                                        {jobs.filter((j) => j.status?.toLowerCase() === status.toLowerCase()).length}
+                                    </span>
+                                )}
+                            </button>
+                        ))}
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        {/* Export CSV */}
+                        <button
+                            onClick={() => exportJobsToCsv(filteredJobs)}
+                            disabled={filteredJobs.length === 0}
+                            className="flex items-center gap-2 px-4 py-2 rounded-xl glass-deep text-xs font-bold text-slate-600 hover:bg-white/60 transition-all duration-200 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                            title="Export filtered applications as CSV"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                            Export
+                        </button>
+
+                        {/* View toggle */}
+                        <div className="flex items-center gap-1 glass-deep rounded-xl p-1">
+                            <button
+                                onClick={() => setViewMode('table')}
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${viewMode === 'table' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-400 hover:text-slate-600'}`}
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                </svg>
+                                Table
+                            </button>
+                            <button
+                                onClick={() => setViewMode('board')}
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${viewMode === 'board' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-400 hover:text-slate-600'}`}
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+                                </svg>
+                                Board
+                            </button>
+                        </div>
+                    </div>
                 </div>
+
+                {viewMode === 'table' ? (
+                    <div className="glass-panel !rounded-[2.5rem] overflow-hidden min-h-[500px]">
+                        <JobsTable
+                            jobs={filteredJobs}
+                            onEditJob={setEditingJob}
+                            linkedCompanyNames={companyNames}
+                            onLinkCompany={setLinkingJob}
+                            onViewCompany={(job) => router.push(`/companies?company=${encodeURIComponent(job.company_name)}`)}
+                        />
+                    </div>
+                ) : (
+                    <KanbanBoard
+                        jobs={filteredJobs}
+                        onEditJob={setEditingJob}
+                        onStageChange={handleStageChange}
+                    />
+                )}
             </main>
 
             {showAddPanel && (
@@ -223,6 +410,19 @@ export default function DashboardPage() {
                         keys={keys}
                     />
                 </>
+            )}
+
+            {linkingJob && user && (
+                <LinkCompanyModal
+                    job={linkingJob}
+                    userId={user.id}
+                    onClose={() => setLinkingJob(null)}
+                    onLinked={() => {
+                        setLinkingJob(null);
+                        fetchJobs();
+                        fetchCompanyNames();
+                    }}
+                />
             )}
 
             {editingJob && (

@@ -7,11 +7,20 @@ import tableBackground from "../../public/table_background.png";
 interface JobsTableProps {
   jobs: JobEntry[];
   onEditJob: (job: JobEntry) => void;
+  linkedCompanyNames?: Set<string>;
+  onLinkCompany?: (job: JobEntry) => void;
+  onViewCompany?: (job: JobEntry) => void;
 }
 
 const ITEMS_PER_PAGE = 8;
 
-export default function JobsTable({ jobs, onEditJob }: JobsTableProps) {
+export default function JobsTable({
+  jobs,
+  onEditJob,
+  linkedCompanyNames,
+  onLinkCompany,
+  onViewCompany,
+}: JobsTableProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [sortField, setSortField] = useState<
     "status" | "application_date" | "location" | null
@@ -48,6 +57,32 @@ export default function JobsTable({ jobs, onEditJob }: JobsTableProps) {
   const renderSortSymbol = (field: string) => {
     if (sortField !== field) return "⇅";
     return sortDirection === "asc" ? "▲" : "▼";
+  };
+
+  const renderCompanyAction = (job: JobEntry) => {
+    if (!linkedCompanyNames) return null;
+    const isLinked = linkedCompanyNames.has(job.company_name);
+    return isLinked ? (
+      <button
+        onClick={() => onViewCompany?.(job)}
+        className="p-3 text-blue-600 hover:text-blue-700 backdrop-blur-md bg-blue-500/10 hover:bg-blue-500/20 rounded-2xl transition-all duration-300 border border-blue-400/30 cursor-pointer"
+        title={`View ${job.company_name} in Companies`}
+      >
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1" />
+        </svg>
+      </button>
+    ) : (
+      <button
+        onClick={() => onLinkCompany?.(job)}
+        className="p-3 text-slate-400 hover:text-blue-600 backdrop-blur-md hover:bg-white/70 rounded-2xl transition-all duration-300 border border-dashed border-slate-300/60 hover:border-blue-300 cursor-pointer"
+        title="Link to a company"
+      >
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+        </svg>
+      </button>
+    );
   };
 
   const getStatusStyle = (status: string) => {
@@ -157,7 +192,7 @@ export default function JobsTable({ jobs, onEditJob }: JobsTableProps) {
                     <tr
                       key={job.id}
                       className="group hover:bg-white/50 hover:backdrop-blur-xl transition-all duration-300 cursor-pointer relative border-b border-white/10 last:border-b-0"
-                      onClick={() => window.open(job.url, "_blank")}
+                      onClick={() => job.url && window.open(job.url, "_blank")}
                     >
                       <td className="px-10 py-7 relative">
                         {/* Row accent color */}
@@ -170,7 +205,7 @@ export default function JobsTable({ jobs, onEditJob }: JobsTableProps) {
                             {job.company_name}
                           </span>
                           <span className="text-sm text-slate-700 mt-1 flex items-center gap-2 drop-shadow-sm">
-                            <div className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                            <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
                             {job.role}
                           </span>
                         </div>
@@ -235,6 +270,8 @@ export default function JobsTable({ jobs, onEditJob }: JobsTableProps) {
                         className="px-10 py-7 text-right"
                         onClick={(e) => e.stopPropagation()}
                       >
+                        <div className="flex items-center justify-end gap-2">
+                        {renderCompanyAction(job)}
                         <button
                           onClick={() => onEditJob(job)}
                           className="p-3 text-slate-500 hover:text-blue-600 backdrop-blur-md hover:bg-white/70 rounded-2xl transition-all duration-300 group/btn border border-white/40"
@@ -253,6 +290,7 @@ export default function JobsTable({ jobs, onEditJob }: JobsTableProps) {
                             />
                           </svg>
                         </button>
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -274,7 +312,7 @@ export default function JobsTable({ jobs, onEditJob }: JobsTableProps) {
                 <div
                   key={job.id}
                   className={`backdrop-blur-xl bg-white/60 rounded-2xl p-4 border border-white/50 shadow-xl active:scale-[0.97] transition-all relative overflow-hidden`}
-                  onClick={() => window.open(job.url, "_blank")}
+                  onClick={() => job.url && window.open(job.url, "_blank")}
                 >
                   {/* Card accent bar */}
                   <div
@@ -303,7 +341,7 @@ export default function JobsTable({ jobs, onEditJob }: JobsTableProps) {
                         Location
                       </p>
                       <p className="text-xs font-bold text-slate-900 flex items-center gap-1 drop-shadow-sm truncate">
-                        <div className="w-1 h-1 rounded-full bg-blue-400 flex-shrink-0" />
+                        <span className="w-1 h-1 rounded-full bg-blue-400 flex-shrink-0" />
                         <span className="truncate">{job.location}</span>
                       </p>
                     </div>
@@ -326,15 +364,37 @@ export default function JobsTable({ jobs, onEditJob }: JobsTableProps) {
                         {job.stage}
                       </span>
                     </div>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onEditJob(job);
-                      }}
-                      className="px-4 py-2 backdrop-blur-md bg-slate-900/80 text-white font-black text-[9px] uppercase tracking-wider rounded-xl hover:bg-slate-900 transition-colors shadow-lg border border-white/20 flex-shrink-0"
-                    >
-                      Edit
-                    </button>
+                    <div className="flex items-center gap-1.5 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                      {linkedCompanyNames && (
+                        linkedCompanyNames.has(job.company_name) ? (
+                          <button
+                            onClick={() => onViewCompany?.(job)}
+                            className="p-2 text-blue-600 backdrop-blur-md bg-blue-500/15 rounded-xl border border-blue-400/30"
+                            title="View company"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1" />
+                            </svg>
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => onLinkCompany?.(job)}
+                            className="p-2 text-slate-400 backdrop-blur-md bg-white/50 rounded-xl border border-dashed border-slate-300/60"
+                            title="Link to a company"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                            </svg>
+                          </button>
+                        )
+                      )}
+                      <button
+                        onClick={() => onEditJob(job)}
+                        className="px-4 py-2 backdrop-blur-md bg-slate-900/80 text-white font-black text-[9px] uppercase tracking-wider rounded-xl hover:bg-slate-900 transition-colors shadow-lg border border-white/20"
+                      >
+                        Edit
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))

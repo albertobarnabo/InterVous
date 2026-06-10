@@ -39,4 +39,7 @@ export type CompanyTagMap = {
 
 export type CompanyWithTags = Company & {
     tags: CompanyTag[];
+    job_count?: number;
 };
+
+export type SortOption = 'name_asc' | 'name_desc' | 'recent' | 'shuffle';
