@@ -7,6 +7,7 @@ interface JobDetailPanelProps {
   onClose: () => void;
   onEdit: (job: JobEntry) => void;
   companyLinked?: boolean;
+  companyLogo?: string | null;
   onViewCompany?: (job: JobEntry) => void;
   onLinkCompany?: (job: JobEntry) => void;
 }
@@ -50,6 +51,7 @@ export default function JobDetailPanel({
   onClose,
   onEdit,
   companyLinked,
+  companyLogo,
   onViewCompany,
   onLinkCompany,
 }: JobDetailPanelProps) {
@@ -109,6 +111,12 @@ export default function JobDetailPanel({
               {job?.role || "—"}
             </h3>
             <div className="flex items-center gap-2 flex-wrap">
+              {companyLogo && (
+                <div className="w-7 h-7 rounded-lg bg-white border border-slate-100 shadow-sm p-1 flex items-center justify-center overflow-hidden">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={companyLogo} alt="" className="w-full h-full object-contain" />
+                </div>
+              )}
               <span className="text-base font-bold text-slate-600">{job?.company_name}</span>
               {companyLinked && job ? (
                 <button

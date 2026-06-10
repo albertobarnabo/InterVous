@@ -7,6 +7,7 @@ interface KanbanBoardProps {
   jobs: JobEntry[];
   onEditJob: (job: JobEntry) => void;
   onStageChange: (job: JobEntry, newStage: string) => Promise<void>;
+  companyLogos?: Record<string, string | null>;
 }
 
 const STAGES = [
@@ -34,7 +35,7 @@ function statusDot(status: string) {
   return "bg-slate-400";
 }
 
-export default function KanbanBoard({ jobs, onEditJob, onStageChange }: KanbanBoardProps) {
+export default function KanbanBoard({ jobs, onEditJob, onStageChange, companyLogos }: KanbanBoardProps) {
   const [draggingId, setDraggingId] = useState<number | null>(null);
   const [dragOverStage, setDragOverStage] = useState<string | null>(null);
   const [savingId, setSavingId] = useState<number | null>(null);
@@ -88,9 +89,17 @@ export default function KanbanBoard({ jobs, onEditJob, onStageChange }: KanbanBo
         ${savingId === job.id ? "animate-pulse" : ""}`}
     >
       <div className="flex items-start justify-between gap-2 mb-1.5">
-        <p className="font-bold text-slate-900 text-sm leading-snug truncate">
-          {job.company_name}
-        </p>
+        <div className="flex items-center gap-2 min-w-0">
+          {companyLogos?.[job.company_name] ? (
+            <div className="w-6 h-6 rounded-lg bg-white border border-slate-100 shadow-sm p-0.5 flex items-center justify-center shrink-0 overflow-hidden">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={companyLogos[job.company_name]!} alt="" className="w-full h-full object-contain" />
+            </div>
+          ) : null}
+          <p className="font-bold text-slate-900 text-sm leading-snug truncate">
+            {job.company_name}
+          </p>
+        </div>
         <span className={`w-2 h-2 rounded-full shrink-0 mt-1.5 ${statusDot(job.status)}`} title={job.status} />
       </div>
       <p className="text-xs text-slate-500 font-medium truncate mb-2">{job.role}</p>

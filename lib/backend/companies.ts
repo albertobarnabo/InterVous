@@ -199,6 +199,20 @@ export async function getAllCompanyNames(): Promise<string[]> {
     return (data || []).map((r) => r.name);
 }
 
+/* name → logo_url for every tracked company; used to decorate job rows */
+export async function getCompanyLogoMap(): Promise<Record<string, string | null>> {
+    const { data, error } = await supabase
+        .from('companies')
+        .select('name, logo_url');
+
+    if (error) throw new Error(error.message);
+    const map: Record<string, string | null> = {};
+    for (const row of data || []) {
+        map[row.name] = row.logo_url;
+    }
+    return map;
+}
+
 export async function getJobCountsByCompanyNames(
     companyNames: string[],
     userId: string

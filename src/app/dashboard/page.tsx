@@ -18,7 +18,7 @@ import { useAuth } from '../../../contexts/AuthContext';
 
 import { getJobsByUser, updateJob, deleteJob } from '../../../lib/jobService';
 import { getKeysStatus, KeysStatus } from '../../../lib/keyService';
-import { getAllCompanyNames } from '../../../lib/backend/companies';
+import { getCompanyLogoMap } from '../../../lib/backend/companies';
 
 import { JobEntry } from '../../../lib/types';
 
@@ -84,8 +84,9 @@ export default function DashboardPage() {
     const [linkingJob, setLinkingJob] = useState<JobEntry | null>(null);
     const [selectedJob, setSelectedJob] = useState<JobEntry | null>(null);
 
-    // Company linkage
-    const [companyNames, setCompanyNames] = useState<Set<string>>(new Set());
+    // Company linkage: name → logo_url for every tracked company
+    const [companyLogos, setCompanyLogos] = useState<Record<string, string | null>>({});
+    const companyNames = useMemo(() => new Set(Object.keys(companyLogos)), [companyLogos]);
 
     // Filters & view
     const [searchQuery, setSearchQuery] = useState('');
@@ -161,8 +162,8 @@ export default function DashboardPage() {
 
     const fetchCompanyNames = useCallback(async () => {
         try {
-            const names = await getAllCompanyNames();
-            setCompanyNames(new Set(names));
+            const logos = await getCompanyLogoMap();
+            setCompanyLogos(logos);
         } catch (error) {
             console.log("Error retrieving company names", error);
         }
@@ -396,6 +397,7 @@ export default function DashboardPage() {
                             jobs={filteredJobs}
                             onEditJob={setEditingJob}
                             onRowClick={setSelectedJob}
+                            companyLogos={companyLogos}
                             linkedCompanyNames={companyNames}
                             onLinkCompany={setLinkingJob}
                             onViewCompany={(job) => router.push(`/companies?company=${encodeURIComponent(job.company_name)}`)}
@@ -406,6 +408,7 @@ export default function DashboardPage() {
                         jobs={filteredJobs}
                         onEditJob={setSelectedJob}
                         onStageChange={handleStageChange}
+                        companyLogos={companyLogos}
                     />
                 )}
             </main>
@@ -446,6 +449,7 @@ export default function DashboardPage() {
                     setEditingJob(job);
                 }}
                 companyLinked={selectedJob ? companyNames.has(selectedJob.company_name) : false}
+                companyLogo={selectedJob ? companyLogos[selectedJob.company_name] ?? null : null}
                 onViewCompany={(job) => router.push(`/companies?company=${encodeURIComponent(job.company_name)}`)}
                 onLinkCompany={(job) => {
                     setSelectedJob(null);
