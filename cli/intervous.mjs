@@ -456,6 +456,214 @@ async function cmdStorage(sb, sub, pos, flags) {
   fail(`Unknown storage subcommand: ${sub}`);
 }
 
+// ---------------------------------------------------------------------------
+// dossier: schema detection, import, feedback loop, timeline
+// ---------------------------------------------------------------------------
+
+const DOCS_BUCKET = 'application-docs';
+
+// The dossier columns, job_events and the private bucket come from
+// supabase/migrations/20261017_application_dossier.sql. Commands degrade to the base
+// jobs columns until it has been run.
+async function schemaState(sb) {
+  const cols = await sb.from('jobs').select('external_key, screening, cv_path').limit(1);
+  const events = await sb.from('job_events').select('id').limit(1);
+  // list() on a missing bucket can come back empty without an error, so probe with a
+  // tiny write into the user's own folder and remove it again.
+  const { data: s } = await sb.auth.getSession();
+  const probe = `${s.session.user.id}/.probe`;
+  const up = await sb.storage.from(DOCS_BUCKET).upload(probe, new Blob(['ok']), { upsert: true });
+  if (!up.error) await sb.storage.from(DOCS_BUCKET).remove([probe]);
+  return { dossier: !cols.error, events: !events.error, bucket: !up.error };
+}
+
+async function cmdSchema(sb, flags) {
+  await requireUser(sb);
+  const s = await schemaState(sb);
+  out(
+    {
+      dossier_columns: s.dossier ? 'present' : 'missing',
+      job_events: s.events ? 'present' : 'missing',
+      [`bucket ${DOCS_BUCKET}`]: s.bucket ? 'present' : 'missing',
+      migration: s.dossier && s.events && s.bucket ? 'applied' : 'run supabase/migrations/20261017_application_dossier.sql in the SQL editor',
+    },
+    flags.json,
+  );
+}
+
+// history.json status -> (status, stage, screening) in InterVous vocabulary
+const STATUS_MAP = {
+  applied: ['Active', 'Screening', 'pending'],
+  draft: ['Active', 'Screening', 'pending'],
+  screening: ['Active', 'Screening', 'pending'],
+  interviewing: ['Active', 'Video Interview', 'passed'],
+  offer: ['Active', 'Offer', 'passed'],
+  rejected: ['Inactive', 'Screening', 'rejected'],
+  withdrawn: ['Inactive', 'Screening', 'withdrawn'],
+  not_applied: ['Not Applied', '-', 'pending'],
+};
+
+async function findJob(sb, userId, ref) {
+  if (/^\d+$/.test(String(ref))) {
+    const { data, error } = await sb.from('jobs').select('*').eq('id', ref).eq('user_id', userId).single();
+    if (error) fail(`No job with id ${ref}`);
+    return data;
+  }
+  const byKey = await sb.from('jobs').select('*').eq('user_id', userId).eq('external_key', ref);
+  if (!byKey.error && byKey.data?.length === 1) return byKey.data[0];
+  const { data, error } = await sb.from('jobs').select('*').eq('user_id', userId).or(`company_name.ilike.%${ref}%,role.ilike.%${ref}%`);
+  if (error) fail(error.message);
+  if (data.length === 1) return data[0];
+  if (!data.length) fail(`No job matches "${ref}"`);
+  fail(`"${ref}" matches ${data.length} jobs: ${data.map((j) => `${j.id} ${j.company_name} / ${j.role}`).join('; ')}. Use the id.`);
+}
+
+async function cmdImport(sb, pos, flags) {
+  const user = await requireUser(sb);
+  const file = pos[0];
+  if (!file) fail('import <file.json> [--include-not-applied] [--dry-run]');
+  const raw = JSON.parse(fs.readFileSync(file, 'utf8'));
+  const records = Array.isArray(raw) ? raw : raw.applications;
+  const state = await schemaState(sb);
+  const { data: existing, error } = await sb.from('jobs').select('*').eq('user_id', user.id);
+  if (error) fail(error.message);
+  const norm = (s) => String(s ?? '').toLowerCase().replace(/\s+/g, ' ').trim();
+  const report = [];
+
+  for (const r of records) {
+    if (r.status === 'not_applied' && !flags['include-not-applied']) {
+      report.push({ key: r.id, action: 'skipped (not applied)' });
+      continue;
+    }
+    const [status, stage, screening] = STATUS_MAP[r.status] ?? STATUS_MAP.applied;
+    const base = {
+      user_id: user.id,
+      company_name: r.company,
+      role: r.role,
+      location: r.location ?? '',
+      url: r.url ?? '',
+      application_date: r.date_applied ?? r.date_cv_built ?? null,
+      status,
+      stage,
+    };
+    const dossier = state.dossier
+      ? {
+          external_key: r.id,
+          source: r.channel ?? null,
+          work_mode: r.work_mode ?? null,
+          role_family: r.role_family ?? null,
+          cv_variant: r.cv_variant ?? null,
+          years_required: r.years_required ?? null,
+          visa_needed: r.visa_needed ?? null,
+          salary: r.salary ?? null,
+          closing_date: r.closing_date ?? null,
+          requirements_matched: r.requirements_matched ?? [],
+          gaps: r.gaps ?? [],
+          proof_points: r.proof_points_used ?? r.proof_points ?? [],
+          answers: r.answers ?? [],
+          contacts: r.contacts ?? [],
+          notes: [r.notes, r.status_evidence && `Status evidence: ${r.status_evidence}`].filter(Boolean).join('\n\n') || null,
+          jd_text: r.jd_text ?? null,
+          screening,
+        }
+      : {};
+    const match =
+      (state.dossier && existing.find((j) => j.external_key === r.id)) ||
+      existing.find((j) => norm(j.company_name) === norm(r.company) && norm(j.role) === norm(r.role));
+
+    if (flags['dry-run']) {
+      report.push({ key: r.id, action: match ? `would update ${match.id}` : 'would insert', status, stage });
+      continue;
+    }
+    let job;
+    if (match) {
+      // never overwrite progress he recorded in the app (status/stage) on an existing row
+      const { status: _s, stage: _st, ...rest } = base;
+      const res = await sb.from('jobs').update({ ...rest, ...dossier }).eq('id', match.id).select().single();
+      if (res.error) fail(`${r.id}: ${res.error.message}`);
+      job = res.data;
+      report.push({ key: r.id, id: job.id, action: 'updated' });
+    } else {
+      const res = await sb.from('jobs').insert([{ ...base, ...dossier }]).select().single();
+      if (res.error) fail(`${r.id}: ${res.error.message}`);
+      job = res.data;
+      existing.push(job);
+      report.push({ key: r.id, id: job.id, action: 'inserted' });
+    }
+
+    if (state.bucket && r.cv_pdf_path && fs.existsSync(r.cv_pdf_path)) {
+      const objectPath = `${user.id}/${r.id}/${path.basename(r.cv_pdf_path)}`;
+      const up = await sb.storage.from(DOCS_BUCKET).upload(objectPath, fs.readFileSync(r.cv_pdf_path), { contentType: 'application/pdf', upsert: true });
+      if (up.error) report.push({ key: r.id, action: `cv upload failed: ${up.error.message}` });
+      else if (state.dossier) await sb.from('jobs').update({ cv_path: objectPath }).eq('id', job.id);
+    }
+
+    if (state.events && Array.isArray(r.events) && r.events.length) {
+      const { data: have } = await sb.from('job_events').select('occurred_on, note').eq('job_id', job.id);
+      const seen = new Set((have ?? []).map((e) => `${e.occurred_on}|${e.note}`));
+      const rows = r.events
+        .filter((e) => e.date && e.event && !seen.has(`${e.date}|${e.event}`))
+        .map((e) => ({ job_id: job.id, user_id: user.id, occurred_on: e.date, kind: e.kind ?? 'note', note: e.event }));
+      if (rows.length) {
+        const ev = await sb.from('job_events').insert(rows);
+        if (ev.error) report.push({ key: r.id, action: `events failed: ${ev.error.message}` });
+      }
+    }
+  }
+  if (!state.dossier) report.push({ key: '-', action: 'dossier columns missing: imported base fields only; run the migration and import again to fill the rest' });
+  out(report, flags.json);
+}
+
+// Outcome vocabulary for the feedback loop. Each sets status/stage/screening and logs an event.
+const OUTCOMES = {
+  passed: { status: 'Active', stage: 'HR Interview', screening: 'passed' },
+  interview: { status: 'Active', screening: 'passed' },
+  offer: { status: 'Active', stage: 'Offer', screening: 'passed' },
+  rejected: { status: 'Inactive' },
+  no_response: { status: 'Inactive', screening: 'no_response' },
+  withdrawn: { status: 'Inactive', screening: 'withdrawn' },
+  reopen: { status: 'Active' },
+  note: {},
+};
+
+async function cmdFeedback(sb, pos, flags) {
+  const user = await requireUser(sb);
+  const [ref, outcome] = pos;
+  if (!ref || !OUTCOMES[outcome]) fail(`feedback <job id|key|company> <${Object.keys(OUTCOMES).join('|')}> [--stage S] [--note N] [--date YYYY-MM-DD]`);
+  if (outcome === 'interview' && !flags.stage) fail('feedback ... interview needs --stage (e.g. "Technical Interview")');
+  const job = await findJob(sb, user.id, ref);
+  const state = await schemaState(sb);
+  const o = OUTCOMES[outcome];
+  const patch = {};
+  if (o.status) patch.status = o.status;
+  if (flags.stage || o.stage) patch.stage = flags.stage || o.stage;
+  if (state.dossier) {
+    // a rejection after passing the screen keeps "passed": the CV did its job
+    if (outcome === 'rejected') patch.screening = job.screening === 'passed' ? 'passed' : 'rejected';
+    else if (o.screening) patch.screening = o.screening;
+  }
+  if (Object.keys(patch).length) {
+    const { error } = await sb.from('jobs').update(patch).eq('id', job.id).eq('user_id', user.id);
+    if (error) fail(error.message);
+  }
+  if (state.events) {
+    const { error } = await sb.from('job_events').insert([
+      { job_id: job.id, user_id: user.id, occurred_on: flags.date ?? new Date().toISOString().slice(0, 10), kind: outcome, stage: patch.stage ?? job.stage ?? null, note: flags.note ?? null },
+    ]);
+    if (error) fail(error.message);
+  }
+  out({ job: `${job.id} ${job.company_name} / ${job.role}`, outcome, ...patch, event_logged: state.events }, flags.json);
+}
+
+async function cmdEvents(sb, pos, flags) {
+  const user = await requireUser(sb);
+  const job = await findJob(sb, user.id, pos[0]);
+  const { data, error } = await sb.from('job_events').select('occurred_on, kind, stage, note').eq('job_id', job.id).order('occurred_on');
+  if (error) fail(`${error.message} (has the migration been run?)`);
+  if (!flags.json) console.log(`${job.company_name} / ${job.role}\n`);
+  out(data, flags.json);
+}
+
 async function cmdExport(sb, flags) {
   const user = await requireUser(sb);
   const dump = { exported_at: new Date().toISOString(), user: { id: user.id, email: user.email } };
@@ -501,6 +709,14 @@ const HELP = `intervous — InterVous from the terminal, as your own user
 
   export [--out file.json]         dump every table you can read
 
+  schema                           is the dossier migration applied?
+  import <file.json> [--dry-run] [--include-not-applied]
+                                   upsert applications (history.json format), upload CVs, add events
+  feedback <job> <passed|interview|offer|rejected|no_response|withdrawn|reopen|note>
+           [--stage S] [--note N] [--date YYYY-MM-DD]
+                                   record what happened; <job> = id, external key or company name
+  events <job> [--json]            the application's timeline
+
   field=value sets a string; field:=json parses the value (numbers, true, null, [..], {..}).
   Config and session live in ${CONFIG_DIR}.`;
 
@@ -529,6 +745,14 @@ async function main() {
       return cmdStorage(sb, sub, pos, flags);
     case 'export':
       return cmdExport(sb, flags);
+    case 'schema':
+      return cmdSchema(sb, flags);
+    case 'import':
+      return cmdImport(sb, pos, flags);
+    case 'feedback':
+      return cmdFeedback(sb, pos, flags);
+    case 'events':
+      return cmdEvents(sb, pos, flags);
     default:
       fail(`Unknown command: ${cmd}. Run: intervous help`);
   }

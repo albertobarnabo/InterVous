@@ -1,89 +1,303 @@
 @import "tailwindcss";
-@plugin "flowbite-react/plugin/tailwindcss";
-@source "../../.flowbite-react/class-list.json";
 
+/*
+ * InterVous visual system (docs/SPEC.md section 3).
+ * Tokens live on :root and are mapped into Tailwind in @theme inline below.
+ * scripts/contrast.mjs parses the light and dark blocks of this file and fails
+ * `npm run lint` when any text/background pair drops under 4.5:1, so keep the
+ * light block, the dark block and the dark media block as plain `--name: #hex;` lines.
+ */
+
+/* Dark mode follows the system unless the page pins data-theme. */
+@custom-variant dark {
+  @media (prefers-color-scheme: dark) {
+    &:where(:root:not([data-theme="light"]) *, :root:not([data-theme="light"])) {
+      @slot;
+    }
+  }
+  &:where([data-theme="dark"], [data-theme="dark"] *) {
+    @slot;
+  }
+}
+
+/* ── Light (default) ─────────────────────────────────────────────── */
+:root,
+[data-theme="light"] {
+  color-scheme: light;
+  --bg: #F6F5F1;
+  --surface: #FFFFFF;
+  --surface-2: #EFEDE7;
+  --line: #E2DFD6;
+  --line-strong: #CFCABD;
+  --ink: #1D1B16;
+  --ink-2: #4A463D;
+  --ink-3: #6E695E;
+  --accent: #1A6B6B;
+  --accent-ink: #FFFFFF;
+  --accent-soft: #E3F0EE;
+  --danger: #A3302A;
+  --danger-soft: #F8E6E4;
+
+  /* phase pills: text on tint (draft, applied, screening, interviewing, offer, rejected, closed) */
+  --phase-draft-fg: #5B5648;
+  --phase-draft-bg: #EEECE6;
+  --phase-applied-fg: #2F4FA8;
+  --phase-applied-bg: #E8EDFA;
+  --phase-screening-fg: #5B3A9A;
+  --phase-screening-bg: #EFE9F8;
+  --phase-interviewing-fg: #1A6B6B;
+  --phase-interviewing-bg: #E3F0EE;
+  --phase-offer-fg: #2E6B1F;
+  --phase-offer-bg: #E6F2DF;
+  --phase-rejected-fg: #A3302A;
+  --phase-rejected-bg: #F8E6E4;
+  --phase-closed-fg: #6E695E;
+  --phase-closed-bg: #EFEDE7;
+  --caution-fg: #8A5A00;
+  --caution-bg: #FBF0D9;
+
+  --shadow-1: 0 0 0 1px var(--line), 0 1px 2px rgb(29 27 22 / 0.06);
+  --shadow-2: 0 8px 24px rgb(29 27 22 / 0.10);
+}
+
+/* ── Dark, pinned ────────────────────────────────────────────────── */
+:root[data-theme="dark"],
+[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #15140F;
+  --surface: #1D1C17;
+  --surface-2: #26241E;
+  --line: #34322A;
+  --line-strong: #4A473D;
+  --ink: #EDEAE2;
+  --ink-2: #BEB9AD;
+  --ink-3: #9A9588;
+  --accent: #5FB8AE;
+  --accent-ink: #15140F;
+  --accent-soft: #1F3533;
+  --danger: #F2A49D;
+  --danger-soft: #3A1F1C;
+
+  --phase-draft-fg: #C9C4B8;
+  --phase-draft-bg: #2A2822;
+  --phase-applied-fg: #A9BDF5;
+  --phase-applied-bg: #1E2740;
+  --phase-screening-fg: #C9B3F0;
+  --phase-screening-bg: #2B2340;
+  --phase-interviewing-fg: #7FD0C6;
+  --phase-interviewing-bg: #16302E;
+  --phase-offer-fg: #9BD68A;
+  --phase-offer-bg: #1D2E18;
+  --phase-rejected-fg: #F2A49D;
+  --phase-rejected-bg: #3A1F1C;
+  --phase-closed-fg: #B5B0A4;
+  --phase-closed-bg: #2A2822;
+  --caution-fg: #F0C46A;
+  --caution-bg: #3A2E12;
+
+  --shadow-1: 0 0 0 1px var(--line), 0 1px 2px rgb(0 0 0 / 0.30);
+  --shadow-2: 0 8px 24px rgb(0 0 0 / 0.45);
+}
+
+/* ── Dark, from the system (same values as the pinned block) ─────── */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #15140F;
+    --surface: #1D1C17;
+    --surface-2: #26241E;
+    --line: #34322A;
+    --line-strong: #4A473D;
+    --ink: #EDEAE2;
+    --ink-2: #BEB9AD;
+    --ink-3: #9A9588;
+    --accent: #5FB8AE;
+    --accent-ink: #15140F;
+    --accent-soft: #1F3533;
+    --danger: #F2A49D;
+    --danger-soft: #3A1F1C;
+
+    --phase-draft-fg: #C9C4B8;
+    --phase-draft-bg: #2A2822;
+    --phase-applied-fg: #A9BDF5;
+    --phase-applied-bg: #1E2740;
+    --phase-screening-fg: #C9B3F0;
+    --phase-screening-bg: #2B2340;
+    --phase-interviewing-fg: #7FD0C6;
+    --phase-interviewing-bg: #16302E;
+    --phase-offer-fg: #9BD68A;
+    --phase-offer-bg: #1D2E18;
+    --phase-rejected-fg: #F2A49D;
+    --phase-rejected-bg: #3A1F1C;
+    --phase-closed-fg: #B5B0A4;
+    --phase-closed-bg: #2A2822;
+    --caution-fg: #F0C46A;
+    --caution-bg: #3A2E12;
+
+    --shadow-1: 0 0 0 1px var(--line), 0 1px 2px rgb(0 0 0 / 0.30);
+    --shadow-2: 0 8px 24px rgb(0 0 0 / 0.45);
+  }
+}
+
+/* Shape, layers and layout constants (not themed). */
 :root {
-  --background: #EFF6FF;
-  --foreground: #1e293b;
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 20px;
+  --z-sticky: 10;
+  --z-nav: 20;
+  --z-popover: 30;
+  --z-dialog: 40;
+  --z-palette: 50;
+  --z-toast: 60;
+  --topbar-h: 56px;
+  --tabbar-h: 56px;
+  --content-max: 1120px;
+  --reading-max: 720px;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-plus-jakarta), var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-source-serif), Georgia, serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-caution: var(--caution-fg);
+  --color-caution-soft: var(--caution-bg);
+
+  --color-phase-draft: var(--phase-draft-fg);
+  --color-phase-draft-soft: var(--phase-draft-bg);
+  --color-phase-applied: var(--phase-applied-fg);
+  --color-phase-applied-soft: var(--phase-applied-bg);
+  --color-phase-screening: var(--phase-screening-fg);
+  --color-phase-screening-soft: var(--phase-screening-bg);
+  --color-phase-interviewing: var(--phase-interviewing-fg);
+  --color-phase-interviewing-soft: var(--phase-interviewing-bg);
+  --color-phase-offer: var(--phase-offer-fg);
+  --color-phase-offer-soft: var(--phase-offer-bg);
+  --color-phase-rejected: var(--phase-rejected-fg);
+  --color-phase-rejected-soft: var(--phase-rejected-bg);
+  --color-phase-closed: var(--phase-closed-fg);
+  --color-phase-closed-soft: var(--phase-closed-bg);
+
+  --radius-sm: var(--r-sm);
+  --radius-md: var(--r-md);
+  --radius-lg: var(--r-lg);
+
+  --shadow-1: var(--shadow-1);
+  --shadow-2: var(--shadow-2);
+
+  /* Type scale (3.3). caption is the floor: nothing smaller, nothing uppercase. */
+  --text-caption: 13px;
+  --text-caption--line-height: 18px;
+  --text-caption--font-weight: 500;
+  --text-small: 14px;
+  --text-small--line-height: 20px;
+  --text-body: 16px;
+  --text-body--line-height: 24px;
+  --text-reading: 18px;
+  --text-reading--line-height: 30px;
+  --text-h3: 20px;
+  --text-h3--line-height: 28px;
+  --text-h3--font-weight: 600;
+  --text-h2: 26px;
+  --text-h2--line-height: 32px;
+  --text-h2--font-weight: 600;
+  --text-h1: 34px;
+  --text-h1--line-height: 40px;
+  --text-h1--font-weight: 600;
+  --text-h1-sm: 28px;
+  --text-h1-sm--line-height: 34px;
+  --text-h1-sm--font-weight: 600;
+  --text-figure: 44px;
+  --text-figure--line-height: 48px;
+  --text-figure--font-weight: 600;
+
+  --container-content: 1120px;
+  --container-reading: 720px;
 }
 
-body {
-  background-color: #EFF6FF;
-  background-image:
-    radial-gradient(at 15%   5%, rgba( 59, 130, 246, 0.28) 0px, transparent 50%),
-    radial-gradient(at 85%   5%, rgba(139,  92, 246, 0.22) 0px, transparent 50%),
-    radial-gradient(at  0%  60%, rgba( 56, 189, 248, 0.22) 0px, transparent 50%),
-    radial-gradient(at 100% 75%, rgba( 99, 102, 241, 0.18) 0px, transparent 50%),
-    radial-gradient(at 50% 100%, rgba( 37,  99, 235, 0.12) 0px, transparent 50%);
-  background-attachment: fixed;
-  color: var(--foreground);
-  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: 16px;
+    line-height: 24px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::selection {
+    background: var(--accent-soft);
+    color: var(--ink);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  a {
+    color: inherit;
+  }
 }
 
-/* ── Glassmorphism Design System ────────────────────────────────── */
+@layer components {
+  /* Reading surfaces: JD, answers. Serif, 18/30, at most 68 characters wide. */
+  .iv-reading {
+    font-family: var(--font-serif);
+    font-size: 18px;
+    line-height: 30px;
+    max-width: 68ch;
+    color: var(--ink);
+  }
 
-/* Floating panel — navbar, filter bars, dialogs */
-.glass-panel {
-  background: rgba(255, 255, 255, 0.74);
-  backdrop-filter: blur(28px) saturate(200%);
-  -webkit-backdrop-filter: blur(28px) saturate(200%);
-  border: 1px solid rgba(255, 255, 255, 0.72);
-  box-shadow:
-    0  8px 32px rgba(0,   0,   0, 0.06),
-    0  2px  8px rgba(0,   0,   0, 0.04),
-    inset 0  1px 0 rgba(255, 255, 255, 0.95),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.25);
+  /* Dates, day counts and numbers. */
+  .iv-num {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Page frame: 16px gutter on mobile, 32px on desktop, 1120px max. */
+  .iv-page {
+    width: 100%;
+    max-width: calc(var(--content-max) + 64px);
+    margin-inline: auto;
+    padding-inline: 16px;
+  }
+  @media (min-width: 1024px) {
+    .iv-page {
+      padding-inline: 32px;
+    }
+  }
 }
 
-/* Standard content card */
-.glass-card {
-  background: rgba(255, 255, 255, 0.62);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.68);
-  box-shadow:
-    0 12px 40px rgba(37,  99, 235, 0.08),
-    0  4px 12px rgba(0,    0,   0, 0.04),
-    inset 0 1px 0 rgba(255, 255, 255, 0.90);
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.glass-card:hover {
-  background: rgba(255, 255, 255, 0.82);
-  box-shadow:
-    0 24px 60px rgba(37,  99, 235, 0.14),
-    0  8px 24px rgba(0,    0,   0, 0.06),
-    inset 0 1px 0 rgba(255, 255, 255, 0.95);
-  transform: translateY(-3px);
-}
-
-/* Deep glass — hero panels, prominent sections */
-.glass-deep {
-  background: rgba(255, 255, 255, 0.40);
-  backdrop-filter: blur(32px) saturate(220%);
-  -webkit-backdrop-filter: blur(32px) saturate(220%);
-  border: 1px solid rgba(255, 255, 255, 0.55);
-  box-shadow:
-    0 20px 60px rgba(0, 0, 0, 0.10),
-    inset 0  1px  0 rgba(255, 255, 255, 0.85),
-    inset 0  0  40px rgba(255, 255, 255, 0.15);
-}
-
-.border-gradient-futuristic {
-  border: 4px solid transparent;
-  background-image:
-    linear-gradient(white, white),
-    linear-gradient(90deg, #000000, rgba(22, 22, 163, 0.804), #1aa0a4);
-  background-origin: border-box;
-  background-clip: padding-box, border-box;
-  border-radius: 0.75rem;
+/* Reduced motion: everything becomes a short opacity change. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 100ms !important;
+    transition-property: opacity !important;
+    scroll-behavior: auto !important;
+  }
 }
