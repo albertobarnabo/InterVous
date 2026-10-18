@@ -1,10 +1,9 @@
-// What the ⌘K palette can find (spec 2.8): applications (company, role, slug), companies and
-// actions ("Mark … as sent", "Log a reply for …", "New application", "Go to …"). Pure: no React.
+// What the ⌘K palette can find: applications (company, role, slug), companies and actions
+// ("Mark … as sent", "Log a reply for …", "Add a job", "Go to …"). Pure: no React.
 import {
-  BarChart3,
   Building2,
-  CalendarCheck,
   CheckCircle2,
+  House,
   Keyboard,
   LayoutList,
   Link2,
@@ -12,7 +11,6 @@ import {
   MessageSquareReply,
   Plus,
   Settings,
-  Sparkles,
   type LucideIcon,
 } from "lucide-react";
 import type { Application } from "../../../lib/data";
@@ -45,16 +43,14 @@ export type PaletteItem = {
 };
 
 export const PAGES: Array<{ href: string; label: string; icon: LucideIcon; hint: string; words: string }> = [
-  { href: "/today", label: "Today", icon: CalendarCheck, hint: "g t", words: "today home queue needs" },
-  { href: "/applications", label: "Applications", icon: LayoutList, hint: "g a", words: "applications list board jobs" },
-  { href: "/insights", label: "Insights", icon: BarChart3, hint: "g i", words: "insights stats replies funnel" },
-  { href: "/companies", label: "Companies", icon: Building2, hint: "g c", words: "companies organisations" },
-  { href: "/proof-points", label: "Proof points", icon: Sparkles, hint: "g p", words: "proof points projects numbers claims" },
-  { href: "/settings", label: "Settings", icon: Settings, hint: "g s", words: "settings keys api avatar thresholds model cli" },
+  { href: "/home", label: "Home", icon: House, hint: "g h", words: "home today start do now summary learned" },
+  { href: "/applications", label: "Applications", icon: LayoutList, hint: "g a", words: "applications list jobs waiting interviews sent" },
+  { href: "/companies", label: "Companies", icon: Building2, hint: "g c", words: "companies organisations logos" },
+  { href: "/settings", label: "Settings", icon: Settings, hint: "g s", words: "settings keys api avatar cli" },
 ];
 
 const ACTIONS: Array<{ id: string; label: string; icon: LucideIcon; hint?: string; words: string; command: PaletteCommand }> = [
-  { id: "new", label: "New application", icon: Plus, hint: "n", words: "new add application job track", command: { type: "new" } },
+  { id: "new", label: "Add a job", icon: Plus, hint: "n", words: "new add application job track link", command: { type: "new" } },
   { id: "add-company", label: "Add company", icon: Building2, words: "add new company create", command: { type: "add-company" } },
   { id: "shortcuts", label: "Keyboard shortcuts", icon: Keyboard, hint: "?", words: "keyboard shortcuts keys help", command: { type: "shortcuts" } },
   { id: "sign-out", label: "Sign out", icon: LogOut, words: "sign out log out logout exit", command: { type: "sign-out" } },
@@ -129,7 +125,7 @@ export function search(q0: string, apps: Application[], companies: Array<{ name:
     out.push({
       id: "new-from-link",
       group: "Actions",
-      label: "New application from this link",
+      label: "Add this job",
       sub: q0.trim(),
       icon: Link2,
       command: { type: "new", url: q0.trim() },

@@ -1,15 +1,16 @@
 "use client";
-// The confirm flow (spec 2.1): one question at a time, in lib/core's order (status questions first,
-// then dates). Each answer writes the field, removes it from `uncertain` and logs a note event,
-// after a 5-second Undo window (see useDeferred). Closing the flow writes what is pending.
+// "Quick check": one question at a time ("Did you send OpenAI · Applied AI Engineer?"), in
+// lib/core's order. Home opens it with one batch of questions (e.g. the CVs made in October).
+// Each answer writes the field and logs a note, after a 5-second Undo window (see useDeferred).
+// Closing the flow writes what is pending.
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { ArrowRight, Check } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ConfirmOption, ConfirmQuestion } from "../../../lib/core";
 import { formatShort } from "../../../lib/core";
 import type { JobOverview } from "../../../lib/data";
-import { Button, ButtonLink, CompanyMark, DateInput, Dialog, PhasePill, cx } from "@/ui";
-import { NEEDS_DATE, answerSummary, dateTarget, fieldLabel, optionLabel, saveAnswer } from "./actions";
+import { Button, ButtonLink, CompanyMark, DateInput, Dialog, StatusPill } from "@/ui";
+import { NEEDS_DATE, answerSummary, dateLabel, dateTarget, optionLabel, saveAnswer } from "./actions";
 import type { useDeferred } from "./useDeferred";
 
 type Deferred = ReturnType<typeof useDeferred>;
@@ -109,7 +110,7 @@ export function ConfirmFlow({ open, onClose, questions, apps, logos, today, defe
     <Dialog
       open={open}
       onClose={close}
-      title="Confirm what the history is unsure about"
+      title="Quick check"
       description={
         current ? (
           <span className="iv-num">
@@ -121,7 +122,7 @@ export function ConfirmFlow({ open, onClose, questions, apps, logos, today, defe
     >
       <div
         aria-hidden
-        className="-mt-1 mb-6 h-1 w-full overflow-hidden rounded-full bg-surface-2"
+        className="mb-6 h-1.5 w-full overflow-hidden rounded-full bg-ink/[0.08]"
       >
         <motion.div
           className="h-full rounded-full bg-accent"
@@ -146,9 +147,9 @@ export function ConfirmFlow({ open, onClose, questions, apps, logos, today, defe
                 <CompanyMark name={current.company} logoUrl={logos.get(current.appId) ?? null} size={32} />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-small font-medium text-ink">{current.company}</p>
-                  <p className="truncate text-caption font-normal text-ink-3">{current.role}</p>
+                  <p className="truncate text-small text-ink-2">{current.role}</p>
                 </div>
-                <PhasePill phase={current.phase} size="sm" />
+                <StatusPill status={current.phase} size="sm" />
               </div>
 
               <p className="text-h3 font-medium text-ink">{current.text}</p>
@@ -162,7 +163,7 @@ export function ConfirmFlow({ open, onClose, questions, apps, logos, today, defe
                   }}
                 >
                   <label className="flex flex-col gap-1.5 text-small font-medium text-ink">
-                    {optionLabel(current, picking).replace("…", "")}
+                    {dateLabel(current, picking)}
                     <DateInput value={date} max={today} onChange={(e) => setDate(e.target.value)} required autoFocus />
                   </label>
                   <Button type="submit" variant="primary" disabled={!date}>
@@ -182,7 +183,7 @@ export function ConfirmFlow({ open, onClose, questions, apps, logos, today, defe
                         onClick={close}
                         icon={ArrowRight}
                       >
-                        Open it to change
+                        Open it to change it
                       </ButtonLink>
                     ) : (
                       <Button
@@ -198,10 +199,9 @@ export function ConfirmFlow({ open, onClose, questions, apps, logos, today, defe
               )}
 
               {row ? (
-                <p className="text-caption font-normal text-ink-3">
-                  On file: {row.applied_on ? `sent ${formatShort(row.applied_on, { today })}` : "no sent date"}
-                  {row.cv_built_on ? ` · CV built ${formatShort(row.cv_built_on, { today })}` : ""}
-                  {current.fields.length ? ` · unsure: ${current.fields.map(fieldLabel).join(", ")}` : ""}
+                <p className="text-small text-ink-2">
+                  What we have: {row.applied_on ? `sent ${formatShort(row.applied_on, { today })}` : "no date sent"}
+                  {row.cv_built_on ? ` · CV made ${formatShort(row.cv_built_on, { today })}` : ""}
                 </p>
               ) : null}
             </motion.div>
@@ -215,12 +215,12 @@ export function ConfirmFlow({ open, onClose, questions, apps, logos, today, defe
               <span className="flex size-10 items-center justify-center rounded-full bg-accent-soft text-accent">
                 <Check aria-hidden size={20} />
               </span>
-              <p className="text-h3 text-ink">{skipped.size ? "That's all for now." : "All confirmed."}</p>
+              <p className="text-h3 text-ink">{skipped.size ? "That's all for now." : "All done. Thank you."}</p>
               <p className="text-small text-ink-2">
                 <span className="iv-num">{answered}</span> answered
                 {skipped.size ? (
                   <>
-                    , <span className="iv-num">{skipped.size}</span> skipped. Skipped questions stay on Today.
+                    , <span className="iv-num">{skipped.size}</span> skipped. Skipped questions come back on Home.
                   </>
                 ) : (
                   "."
@@ -231,7 +231,7 @@ export function ConfirmFlow({ open, onClose, questions, apps, logos, today, defe
         </AnimatePresence>
       </div>
 
-      <div className={cx("mt-6 flex flex-wrap items-center justify-between gap-2 border-t border-line pt-4")}>
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-2 border-t border-ink/[0.06] pt-4">
         {current ? (
           <Button variant="quiet" onClick={() => setSkipped((s) => new Set(s).add(current.key))}>
             Skip this one

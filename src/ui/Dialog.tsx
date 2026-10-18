@@ -35,13 +35,13 @@ export function Dialog({ open, onClose, title, description, children, footer, si
     <HDialog open={open} onClose={onClose} className="relative z-40">
       <DialogBackdrop
         transition
-        className="fixed inset-0 bg-[rgb(21_20_15/0.40)] transition-opacity duration-[160ms] ease-out data-closed:opacity-0"
+        className="iv-scrim fixed inset-0 transition-opacity duration-[160ms] ease-out data-closed:opacity-0"
       />
       <div className="fixed inset-0 flex w-screen items-end justify-center overflow-y-auto p-4 sm:items-center">
         <DialogPanel
           transition
           className={cx(
-            "relative w-full rounded-lg bg-surface p-6 shadow-2 ring-1 ring-line",
+            "iv-glass-thick relative w-full rounded-xl p-6 shadow-[0_0_0_0.5px_rgba(15,23,42,0.08),0_1px_0_rgba(255,255,255,0.9)_inset,0_24px_60px_rgba(15,23,42,0.22)] sm:p-7",
             "transition duration-[160ms] ease-out data-closed:scale-[0.98] data-closed:opacity-0 motion-reduce:data-closed:scale-100",
             widths[size],
             className,
@@ -52,7 +52,7 @@ export function Dialog({ open, onClose, title, description, children, footer, si
               <DialogTitle className="text-h3 text-ink">{title}</DialogTitle>
               {description ? <Description className="mt-1 text-small text-ink-2">{description}</Description> : null}
             </div>
-            {hideClose ? null : <IconButton label="Close" icon={X} onClick={onClose} className="-mr-2 -mt-1" />}
+            {hideClose ? null : <IconButton label="Close" icon={X} size="sm" variant="secondary" onClick={onClose} className="-mr-1 -mt-0.5" />}
           </div>
           {children ? <div className="mt-4">{children}</div> : null}
           {footer ? <div className="mt-6 flex flex-wrap justify-end gap-2">{footer}</div> : null}
@@ -73,37 +73,39 @@ export function Sheet({ open, onClose, title, description, children, footer, sid
   const desktop =
     side === "right"
       ? cx(
-          "md:inset-y-0 md:right-0 md:left-auto md:top-0 md:h-full md:max-h-none md:rounded-none md:rounded-l-lg",
+          "md:inset-y-3 md:right-3 md:left-auto md:top-3 md:bottom-3 md:max-h-none md:rounded-xl",
           width === "md" ? "md:w-[480px]" : "md:w-[640px]",
-          "md:data-closed:translate-y-0 md:data-closed:translate-x-full",
+          "md:data-closed:translate-y-0 md:data-closed:translate-x-[calc(100%+24px)]",
         )
-      : "md:left-1/2 md:w-[640px] md:-translate-x-1/2";
+      : "md:bottom-3 md:left-1/2 md:w-[640px] md:-translate-x-1/2 md:rounded-xl";
   return (
     <HDialog open={open} onClose={onClose} className="relative z-40">
       <DialogBackdrop
         transition
-        className="fixed inset-0 bg-[rgb(21_20_15/0.40)] transition-opacity duration-[280ms] ease-out data-closed:opacity-0"
+        className="iv-scrim fixed inset-0 transition-opacity duration-[280ms] ease-out data-closed:opacity-0"
       />
       <DialogPanel
         transition
         className={cx(
-          "fixed inset-x-0 bottom-0 flex max-h-[92dvh] flex-col rounded-t-lg bg-surface shadow-2 ring-1 ring-line",
+          "iv-glass-thick fixed inset-x-0 bottom-0 flex max-h-[92dvh] flex-col rounded-t-xl",
+          "shadow-[0_0_0_0.5px_rgba(15,23,42,0.08),0_1px_0_rgba(255,255,255,0.9)_inset,0_24px_60px_rgba(15,23,42,0.22)]",
           "transition duration-[280ms] ease-[cubic-bezier(0.32,0.72,0,1)] data-closed:translate-y-full",
           "motion-reduce:data-closed:translate-x-0 motion-reduce:data-closed:translate-y-0 motion-reduce:data-closed:opacity-0",
           desktop,
           className,
         )}
       >
-        <div className="flex items-start justify-between gap-4 border-b border-line px-6 py-4">
+        <div aria-hidden className="mx-auto mt-2 h-1.5 w-10 shrink-0 rounded-full bg-ink/15 md:hidden" />
+        <div className="flex items-start justify-between gap-4 border-b border-ink/[0.08] px-6 pt-4 pb-4 md:pt-5">
           <div className="min-w-0">
             <DialogTitle className="text-h3 text-ink">{title}</DialogTitle>
             {description ? <Description className="mt-1 text-small text-ink-2">{description}</Description> : null}
           </div>
-          {hideClose ? null : <IconButton label="Close" icon={X} onClick={onClose} className="-mr-2" />}
+          {hideClose ? null : <IconButton label="Close" icon={X} size="sm" variant="secondary" onClick={onClose} className="-mr-1" />}
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5 pb-[max(20px,env(safe-area-inset-bottom))]">{children}</div>
         {footer ? (
-          <div className="flex flex-wrap justify-end gap-2 border-t border-line px-6 py-4 pb-[max(16px,env(safe-area-inset-bottom))]">
+          <div className="flex flex-wrap justify-end gap-2 border-t border-ink/[0.08] px-6 py-4 pb-[max(16px,env(safe-area-inset-bottom))]">
             {footer}
           </div>
         ) : null}

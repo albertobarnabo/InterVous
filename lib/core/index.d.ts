@@ -214,7 +214,10 @@ export function minDate(...dates: Array<string | null | undefined>): DateString 
 // ===========================================================================
 
 export const PHASES: readonly Phase[];
+/** Plain words: draft 'Not sent', applied 'Sent · waiting', interviewing 'Interview', skipped 'Not applying', ... */
 export const PHASE_LABELS: Readonly<Record<Phase, string>>;
+/** History title of a status change by its target status ('Marked as no reply'). */
+export const PHASE_CHANGE_TITLES: Readonly<Record<Phase, string>>;
 export const SENT_PHASES: readonly Phase[];
 export const OPEN_PHASES: readonly Phase[];
 export const CLOSED_PHASES: readonly Phase[];
@@ -231,6 +234,11 @@ export interface ListGroup { id: ListGroupId; label: string; phases: Phase[]; co
 export const LIST_GROUPS: readonly ListGroup[];
 /** Group by phase alone; use listGroupOf(derived) to honour the campaign window ('older'). */
 export function phaseGroup(p: string | null | undefined): ListGroupId;
+
+export type StatusGroupId = 'waiting' | 'interviews' | 'not_sent' | 'closed';
+export interface StatusGroup { id: StatusGroupId; label: string; short: string; phases: Phase[] }
+/** Home's four tiles and the Applications filter: Waiting for a reply, Interviews, Not sent yet, Closed. By phase alone. */
+export const STATUS_GROUPS: readonly StatusGroup[];
 
 export interface BoardColumn { id: BoardColumnId; label: string; phases: Phase[]; dropPhase: Phase | null; collapsed: boolean }
 export const BOARD_COLUMNS: readonly BoardColumn[];
@@ -689,3 +697,73 @@ export function insightsForCli(input: CoreInput, opts?: InsightOptions): {
   older: InsightsResult['older'];
   actions: CliAction[];
 };
+
+// ===========================================================================
+// home.mjs (/home)
+// ===========================================================================
+
+export const HOME_MAX_ACTIONS: number;
+export const HOME_MAX_LEARNED: number;
+/** 'Apple', 'Apple and Meta', 'Apple, Meta and OpenAI' */
+export function joinNames(names: string[]): string;
+
+export interface StatusCount { id: StatusGroupId; label: string; short: string; count: number }
+export function statusCounts(ctx: Context): StatusCount[];
+export function summarySentence(c: { waiting: number; interviewing: number; offers: number; notSent: number; total: number }): string;
+
+export interface ConfirmBatch {
+  /** 'confirm_facts:drafts:2026-10', 'confirm_facts:sent', 'confirm_facts:other' */
+  key: string;
+  kind: 'drafts' | 'sent' | 'other';
+  month: string | null;
+  apps: AppRef[];
+  questions: ConfirmQuestion[];
+  /** 'Did you send the 5 CVs made in October? Confirm them so replies can be tracked.' */
+  text: string;
+}
+export function confirmBatches(questions: ConfirmQuestion[], ctx: Context): ConfirmBatch[];
+
+export type HomeButtonId = 'open' | 'update' | 'done' | 'confirm' | 'copy_follow_up' | 'mark_no_reply' | 'mark_sent' | 'drop' | 'checklist_done';
+export interface HomeAction {
+  /** Key for "Not now" (the Today item key, or the confirm batch key). */
+  key: string;
+  type: TodayItem['type'];
+  /** One plain sentence: what to do and why. */
+  text: string;
+  button: { id: HomeButtonId; label: string };
+  /** The one application it is about, when there is one. */
+  app: AppRef | null;
+  /** Every application it covers (no-reply entries, a confirm batch, base-CV topics). */
+  apps: AppRef[];
+  /** A confirm batch's questions. */
+  questions?: ConfirmQuestion[];
+  /** An extra link in the sentence (a newer job post). */
+  link: { href: string; label: string } | null;
+  /** The Today item it comes from. */
+  item: TodayItem;
+}
+export function homeActionsFor(item: TodayItem, ctx: Context): HomeAction[];
+export function learnedSentences(ins: InsightsResult, ctx: Context): Array<{ id: string; text: string }>;
+
+export interface HomeOptions {
+  /** {actionKey: untilISO}: "Not now"; hidden while until >= today. */
+  dismissed?: Record<string, string>;
+}
+export interface HomeResult {
+  today: DateString;
+  /** '10 applications are waiting for a reply and 1 is at interview stage.' */
+  summary: string;
+  /** At most HOME_MAX_ACTIONS, in Today's priority order; one confirm batch at a time. */
+  actions: HomeAction[];
+  /** Actions waiting behind the ones shown. */
+  more: number;
+  /** Keys hidden with "Not now". */
+  hiddenKeys: string[];
+  empty: boolean;
+  /** 'Nothing to do today.' */
+  emptyLine: string;
+  tiles: StatusCount[];
+  /** At most HOME_MAX_LEARNED plain sentences. */
+  learned: Array<{ id: string; text: string }>;
+}
+export function buildHome(input: CoreInput, opts?: HomeOptions): HomeResult;

@@ -1,47 +1,32 @@
 "use client";
 
-import { Building2, ChevronLeft, ChevronRight, LayoutGrid, List, Plus, Search } from "lucide-react";
+import { Building2, ChevronLeft, ChevronRight, Plus, Search } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useApplications } from "../../../../../lib/data";
-import { Button, Callout, EmptyState, Kbd, SegmentedControl, Select, cx } from "@/ui";
+import { useApplications, useToday } from "../../../../../lib/data";
+import { Button, SegmentedControl, Select, cx } from "@/ui";
 import { controlClass } from "@/ui/Field";
-import { useToday } from "@/features/palette/useToday";
+import { glassClass } from "@/features/dossier/glass";
 import {
   getCompanyByName,
   keysStatus,
   listCompanies,
+  listCompaniesOf,
   listTags,
   onCompaniesChanged,
   type CompanyTag,
   type CompanyWithTags,
-  type SortOption,
 } from "../_lib/companies";
 import { appsForCompany } from "../_lib/match";
+import { AppPicker } from "./AppPicker";
 import { CompanyEditor } from "./CompanyEditor";
 import { CompanyPanel } from "./CompanyPanel";
-import { CompanyCard, CompanyRow } from "./CompanyTile";
+import { CompanyCard } from "./CompanyTile";
+import { LogoDialog } from "./LogoDialog";
 import { UnlinkedApps } from "./UnlinkedApps";
 
 const PAGE_SIZE = 24;
-const LETTERS = Array.from({ length: 26 }, (_, i) => String.fromCharCode(65 + i));
-const VIEW_KEY = "iv.companies.view";
-type View = "grid" | "list";
-
-const SORTS: Array<{ value: SortOption; label: string }> = [
-  { value: "name_asc", label: "A → Z" },
-  { value: "name_desc", label: "Z → A" },
-  { value: "recent", label: "Newest first" },
-  { value: "shuffle", label: "Shuffled" },
-];
-
-function readView(): View {
-  try {
-    return localStorage.getItem(VIEW_KEY) === "list" ? "list" : "grid";
-  } catch {
-    return "grid";
-  }
-}
+type Scope = "mine" | "all";
 
 export default function CompaniesView() {
   const router = useRouter();
@@ -51,13 +36,11 @@ export default function CompaniesView() {
   const apps = useApplications();
 
   // filters
+  const [scope, setScope] = useState<Scope>("mine");
   const [query, setQuery] = useState("");
   const [debounced, setDebounced] = useState("");
   const [tagId, setTagId] = useState<string | null>(null);
-  const [sort, setSort] = useState<SortOption>("name_asc");
-  const [letter, setLetter] = useState<string | null>(null);
   const [page, setPage] = useState(1);
-  const [view, setView] = useState<View>("grid");
 
   // data
   const [rows, setRows] = useState<CompanyWithTags[]>([]);
@@ -71,23 +54,43 @@ export default function CompaniesView() {
   // overlays
   const [selected, setSelected] = useState<CompanyWithTags | null>(null);
   const [editor, setEditor] = useState<{ open: boolean; company: CompanyWithTags | null }>({ open: false, company: null });
+  const [logoFor, setLogoFor] = useState<CompanyWithTags | null>(null);
+  const [linkFor, setLinkFor] = useState<CompanyWithTags | null>(null);
   const openEditor = (company: CompanyWithTags | null) => setEditor({ open: true, company });
   const closeEditor = () => setEditor((e) => ({ ...e, open: false }));
 
-  useEffect(() => setView(readView()), []);
   useEffect(() => onCompaniesChanged(() => setVersion((v) => v + 1)), []);
-
   useEffect(() => {
     const t = setTimeout(() => setDebounced(query), 250);
     return () => clearTimeout(t);
   }, [query]);
-  useEffect(() => setPage(1), [debounced, tagId, sort, letter]);
+  useEffect(() => setPage(1), [debounced, tagId, scope]);
 
+  // "Applied to": the companies of his applications, filtered here. "All companies": a server page.
+  const appKey = useMemo(
+    () => (apps.data ?? []).map((a) => `${a.id}:${a.company_id ?? ""}:${a.company_name ?? ""}`).join("|"),
+    [apps.data],
+  );
   useEffect(() => {
+    if (scope === "mine" && !apps.data) {
+      if (apps.error) {
+        setError(apps.error.message);
+        setLoading(false);
+      }
+      return;
+    }
     let live = true;
     setLoading(true);
     setError(null);
-    listCompanies({ page, pageSize: PAGE_SIZE, query: debounced, tagId, sort, letter })
+    const load =
+      scope === "mine"
+        ? listCompaniesOf(apps.data ?? []).then((list) => {
+            const q = debounced.trim().toLowerCase();
+            const data = list.filter((c) => (!q || c.name.toLowerCase().includes(q)) && (!tagId || c.tags.some((t) => t.id === tagId)));
+            return { data: data.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE), count: data.length };
+          })
+        : listCompanies({ page, pageSize: PAGE_SIZE, query: debounced, tagId, sort: "name_asc" });
+    load
       .then((r) => {
         if (!live) return;
         setRows(r.data);
@@ -98,7 +101,8 @@ export default function CompaniesView() {
     return () => {
       live = false;
     };
-  }, [page, debounced, tagId, sort, letter, version]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- appKey stands for apps.data
+  }, [scope, page, debounced, tagId, version, appKey, apps.error]);
 
   useEffect(() => {
     listTags()
@@ -146,6 +150,22 @@ export default function CompaniesView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only the URL drives this
   }, [companyParam]);
 
+  // Keep the open panel in step with edits (logo, name, tags).
+  useEffect(() => {
+    if (!selected || version === 0) return;
+    let live = true;
+    const fresh = rows.find((r) => r.id === selected.id);
+    if (fresh) setSelected(fresh);
+    else
+      getCompanyByName(selected.name)
+        .then((c) => live && c && setSelected(c))
+        .catch(() => {});
+    return () => {
+      live = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refresh when the list reloads
+  }, [rows]);
+
   useEffect(() => {
     if (addParam) {
       openEditor(null);
@@ -159,13 +179,6 @@ export default function CompaniesView() {
     setParam(c.name);
   };
 
-  const changeView = (v: View) => {
-    setView(v);
-    try {
-      localStorage.setItem(VIEW_KEY, v);
-    } catch {}
-  };
-
   const appsByCompany = useMemo(() => {
     const m = new Map<string, ReturnType<typeof appsForCompany>>();
     for (const c of rows) m.set(c.id, appsForCompany(apps.data, c));
@@ -174,25 +187,26 @@ export default function CompaniesView() {
 
   const selectedApps = useMemo(() => appsForCompany(apps.data, selected), [apps.data, selected]);
   const pages = Math.max(1, Math.ceil(count / PAGE_SIZE));
-  const filtered = Boolean(debounced.trim() || tagId || letter);
-  const from = count ? (page - 1) * PAGE_SIZE + 1 : 0;
-  const to = Math.min(page * PAGE_SIZE, count);
+  const filtered = Boolean(debounced.trim() || tagId);
+  const missingLogos = rows.filter((c) => !c.logo_url).length;
 
   return (
-    <div className="iv-page pb-8 pt-8 md:pt-10">
+    <div className="mx-auto w-full max-w-[1120px] px-4 pt-8 pb-24 sm:px-6 md:pt-10">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
-          <h1 className="text-h1-sm text-ink sm:text-h1">Companies</h1>
-          <p className="mt-1 text-body text-ink-2">Companies you&apos;ve applied to or are watching</p>
+          <h1 className="text-[30px] leading-[1.15] font-semibold tracking-[-0.01em] text-ink sm:text-[34px]">Companies</h1>
+          <p className="mt-2 max-w-[60ch] text-[16px] leading-6 text-ink-2">
+            Every company you&apos;ve applied to. Open one to see its applications, add its logo or link an application to it.
+          </p>
         </div>
         <Button variant="primary" icon={Plus} onClick={() => openEditor(null)}>
           Add company
         </Button>
       </header>
 
-      <div className="mt-6 flex flex-col gap-3 md:flex-row md:items-center">
+      <div className="mt-7 flex flex-col gap-3 md:flex-row md:items-center">
         <div className="relative min-w-0 flex-1">
-          <Search aria-hidden size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-3" />
+          <Search aria-hidden size={18} className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-ink-3" />
           <input
             type="search"
             data-page-search
@@ -203,131 +217,91 @@ export default function CompaniesView() {
             }}
             placeholder="Search companies"
             aria-label="Search companies"
-            className={cx(controlClass, "h-9 pl-9 pr-10 pointer-coarse:h-11")}
+            className={cx(controlClass, "h-11 rounded-full pl-10 text-[16px]")}
           />
-          <span aria-hidden className="pointer-events-none absolute inset-y-0 right-2 hidden items-center md:flex">
-            <Kbd>/</Kbd>
-          </span>
         </div>
         <div className="flex flex-wrap items-center gap-2 md:flex-nowrap">
-          <div className="w-40 max-sm:flex-1">
-            <Select<string>
-              aria-label="Filter by tag"
-              value={tagId ?? ""}
-              onChange={(v) => setTagId(v || null)}
-              options={[{ value: "", label: "All tags" }, ...tags.map((t) => ({ value: t.id, label: t.name }))]}
-            />
-          </div>
-          <div className="w-36 max-sm:flex-1">
-            <Select<SortOption> aria-label="Sort" value={sort} onChange={setSort} options={SORTS} />
-          </div>
-          <SegmentedControl<View>
-            aria-label="Layout"
-            value={view}
-            onChange={changeView}
+          <SegmentedControl<Scope>
+            aria-label="Which companies"
+            value={scope}
+            onChange={setScope}
             options={[
-              {
-                value: "grid",
-                label: (
-                  <span className="flex items-center gap-1.5">
-                    <LayoutGrid aria-hidden size={15} /> Grid
-                  </span>
-                ),
-              },
-              {
-                value: "list",
-                label: (
-                  <span className="flex items-center gap-1.5">
-                    <List aria-hidden size={15} /> List
-                  </span>
-                ),
-              },
+              { value: "mine", label: "Applied to" },
+              { value: "all", label: "All companies" },
             ]}
           />
+          {tags.length ? (
+            <div className="w-40 max-sm:flex-1">
+              <Select<string>
+                aria-label="Filter by tag"
+                value={tagId ?? ""}
+                onChange={(v) => setTagId(v || null)}
+                options={[{ value: "", label: "All tags" }, ...tags.map((t) => ({ value: t.id, label: t.name }))]}
+              />
+            </div>
+          ) : null}
         </div>
       </div>
-
-      <nav aria-label="First letter" className="-mx-4 mt-3 overflow-x-auto px-4 [scrollbar-width:none] md:mx-0 md:px-0 [&::-webkit-scrollbar]:hidden">
-        <ul className="flex w-max gap-0.5">
-          <li>
-            <LetterButton on={letter === null} onClick={() => setLetter(null)} wide>
-              All
-            </LetterButton>
-          </li>
-          {LETTERS.map((l) => (
-            <li key={l}>
-              <LetterButton on={letter === l} onClick={() => setLetter(letter === l ? null : l)}>
-                {l}
-              </LetterButton>
-            </li>
-          ))}
-        </ul>
-      </nav>
 
       <div className="mt-6 flex flex-col gap-4">
         <UnlinkedApps apps={apps.data} />
 
-        <p className="text-small text-ink-3" aria-live="polite">
-          {loading ? "Loading…" : count === 0 ? null : count <= PAGE_SIZE ? `${count} ${count === 1 ? "company" : "companies"}` : `${from}–${to} of ${count} companies`}
+        <p className="text-[15px] text-ink-2" aria-live="polite">
+          {loading
+            ? "Loading…"
+            : count === 0
+              ? null
+              : `${count} ${count === 1 ? "company" : "companies"}${missingLogos ? ` · ${missingLogos} without a logo${pages > 1 ? " on this page" : ""}` : ""}`}
         </p>
 
         {error ? (
-          <Callout
-            tone="danger"
-            title="The companies did not load"
-            action={
-              <Button size="sm" onClick={() => setVersion((v) => v + 1)}>
-                Try again
-              </Button>
-            }
-          >
-            {error}
-          </Callout>
+          <div className={cx(glassClass, "flex flex-wrap items-center justify-between gap-3 p-5")}>
+            <div>
+              <p className="text-[16px] font-semibold text-ink">The companies did not load</p>
+              <p className="text-[15px] text-ink-2">{error}</p>
+            </div>
+            <Button onClick={() => setVersion((v) => v + 1)}>Try again</Button>
+          </div>
         ) : loading && !rows.length ? (
-          <div className={view === "grid" ? "grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3" : "flex flex-col gap-2"}>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {Array.from({ length: 6 }, (_, i) => (
-              <div key={i} aria-hidden className={cx("rounded-md bg-surface shadow-1", view === "grid" ? "h-40" : "h-16")} />
+              <div key={i} aria-hidden className={cx(glassClass, "h-36")} />
             ))}
           </div>
         ) : rows.length === 0 ? (
-          <EmptyState
-            icon={Building2}
-            title={filtered ? "No company matches" : "No companies yet"}
-            body={
-              filtered
-                ? "Try another name, tag or letter."
-                : "Companies are added when you add an application, or here by hand."
-            }
-            action={
-              filtered ? (
+          <div className={cx(glassClass, "flex flex-col items-center gap-2 px-6 py-12 text-center")}>
+            <Building2 aria-hidden size={28} strokeWidth={1.5} className="text-ink-3" />
+            <p className="text-[18px] font-semibold text-ink">
+              {filtered ? "No company matches" : scope === "mine" ? "No companies yet" : "No companies saved"}
+            </p>
+            <p className="max-w-md text-[15px] text-ink-2">
+              {filtered
+                ? "Try another name or tag."
+                : "A company is added when you add a job. You can also add one here."}
+            </p>
+            <div className="mt-3">
+              {filtered ? (
                 <Button
                   onClick={() => {
                     setQuery("");
                     setTagId(null);
-                    setLetter(null);
                   }}
                 >
-                  Clear filters
+                  Clear search
                 </Button>
               ) : (
                 <Button variant="primary" icon={Plus} onClick={() => openEditor(null)}>
                   Add company
                 </Button>
-              )
-            }
-          />
-        ) : view === "grid" ? (
-          <div className={cx("grid grid-cols-1 gap-3 transition-opacity duration-[120ms] sm:grid-cols-2 lg:grid-cols-3", loading && "opacity-60")}>
-            {rows.map((c) => (
-              <CompanyCard key={c.id} company={c} apps={appsByCompany.get(c.id) ?? []} onOpen={open} onEdit={(x) => openEditor(x)} />
-            ))}
+              )}
+            </div>
           </div>
         ) : (
-          <ul className={cx("flex flex-col gap-2 transition-opacity duration-[120ms]", loading && "opacity-60")}>
+          <div className={cx("grid grid-cols-1 gap-4 transition-opacity sm:grid-cols-2 lg:grid-cols-3", loading && "opacity-60")}>
             {rows.map((c) => (
-              <CompanyRow key={c.id} company={c} apps={appsByCompany.get(c.id) ?? []} onOpen={open} onEdit={(x) => openEditor(x)} />
+              <CompanyCard key={c.id} company={c} apps={appsByCompany.get(c.id) ?? []} onOpen={open} onAddLogo={setLogoFor} />
             ))}
-          </ul>
+          </div>
         )}
 
         {pages > 1 ? (
@@ -335,8 +309,8 @@ export default function CompaniesView() {
             <Button icon={ChevronLeft} disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
               Previous
             </Button>
-            <span className="iv-num text-small text-ink-2">
-              {page} of {pages}
+            <span className="text-[15px] text-ink-2 tabular-nums">
+              Page {page} of {pages}
             </span>
             <Button disabled={page >= pages} onClick={() => setPage((p) => p + 1)}>
               Next
@@ -357,6 +331,8 @@ export default function CompaniesView() {
           setParam(null);
         }}
         onEdit={(c) => openEditor(c)}
+        onLogo={setLogoFor}
+        onLinkApp={setLinkFor}
       />
 
       <CompanyEditor
@@ -375,23 +351,9 @@ export default function CompaniesView() {
           }
         }}
       />
-    </div>
-  );
-}
 
-function LetterButton({ on, onClick, wide, children }: { on: boolean; onClick: () => void; wide?: boolean; children: string }) {
-  return (
-    <button
-      type="button"
-      aria-pressed={on}
-      onClick={onClick}
-      className={cx(
-        "flex h-8 items-center justify-center rounded-sm text-small font-medium transition-colors duration-[120ms] pointer-coarse:h-11",
-        wide ? "px-2.5" : "w-8 pointer-coarse:w-10",
-        on ? "bg-accent text-accent-ink" : "text-ink-2 hover:bg-surface-2 hover:text-ink",
-      )}
-    >
-      {children}
-    </button>
+      <LogoDialog open={!!logoFor} onClose={() => setLogoFor(null)} company={logoFor} />
+      <AppPicker open={!!linkFor} onClose={() => setLinkFor(null)} company={linkFor} apps={apps.data} />
+    </div>
   );
 }

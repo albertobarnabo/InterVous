@@ -27,12 +27,11 @@ type Props = {
   onSaved: (company: { id: string; name: string }) => void;
 };
 
-/** Add or edit a company: name, website, logo and tags (with tag create, rename and delete). */
+/** Add or edit a company: name, website and tags (with tag create, rename and delete). The logo has its own dialog. */
 export function CompanyEditor({ open, company, initialName = "", onClose, onSaved }: Props) {
   const { show } = useToast();
   const [name, setName] = useState("");
   const [website, setWebsite] = useState("");
-  const [logoUrl, setLogoUrl] = useState("");
   const [tags, setTags] = useState<CompanyTag[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
   const [newTag, setNewTag] = useState("");
@@ -44,7 +43,6 @@ export function CompanyEditor({ open, company, initialName = "", onClose, onSave
     if (!open) return;
     setName(company?.name ?? initialName);
     setWebsite(company?.website ?? "");
-    setLogoUrl(company?.logo_url ?? "");
     setSelected(company?.tags.map((t) => t.id) ?? []);
     setNewTag("");
     setManaging(false);
@@ -79,15 +77,15 @@ export function CompanyEditor({ open, company, initialName = "", onClose, onSave
     if (!name.trim()) return;
     setBusy(true);
     setError(null);
-    const draft = { name: name.trim(), website: normalizeWebsite(website), logo_url: logoUrl.trim() || null };
+    const draft = { name: name.trim(), website: normalizeWebsite(website), logo_url: company?.logo_url ?? null };
     try {
       if (company) {
         await updateCompany(company.id, draft, selected);
-        show({ text: `${draft.name} saved` });
+        show({ text: `${draft.name} saved.` });
         onSaved({ id: company.id, name: draft.name });
       } else {
         const c = await createCompany(draft, selected);
-        show({ text: `${c.name} added` });
+        show({ text: `${c.name} added.` });
         onSaved({ id: c.id, name: c.name });
       }
     } catch (e) {
@@ -127,24 +125,19 @@ export function CompanyEditor({ open, company, initialName = "", onClose, onSave
         }}
       >
         <div className="flex items-end gap-3">
-          <CompanyMark name={name || "?"} logoUrl={logoUrl.trim() || null} size={48} />
+          <CompanyMark name={name || "?"} logoUrl={company?.logo_url ?? null} size={48} />
           <Field label="Name" className="flex-1">
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Acme" autoFocus data-autofocus required />
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Acme" autoFocus data-autofocus required className="h-11 text-[16px]" />
           </Field>
         </div>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Website" hint="Auto-fill uses it to find the right company.">
-            <Input value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="acme.com" inputMode="url" autoComplete="off" />
-          </Field>
-          <Field label="Logo URL" hint="A square image works best.">
-            <Input value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} placeholder="https://acme.com/logo.png" inputMode="url" autoComplete="off" />
-          </Field>
-        </div>
+        <Field label="Website" hint="Optional. Auto-fill and the logo suggestion use it.">
+          <Input value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="acme.com" inputMode="url" autoComplete="off" className="h-11 text-[16px]" />
+        </Field>
       </form>
 
       <fieldset className="mt-5">
         <div className="flex items-center justify-between gap-2">
-          <legend className="text-small font-medium text-ink">Tags</legend>
+          <legend className="text-[15px] font-medium text-ink">Tags</legend>
           {tags.length ? (
             <Button size="sm" variant="quiet" icon={managing ? Check : Pencil} onClick={() => setManaging((m) => !m)}>
               {managing ? "Done" : "Rename or delete tags"}
@@ -167,7 +160,7 @@ export function CompanyEditor({ open, company, initialName = "", onClose, onSave
           </ul>
         ) : (
           <div className="mt-2 flex flex-wrap gap-1.5">
-            {tags.length === 0 ? <p className="text-small text-ink-3">No tags yet. Create the first one below.</p> : null}
+            {tags.length === 0 ? <p className="text-[15px] text-ink-2">No tags yet. Create the first one below.</p> : null}
             {tags.map((t) => (
               <Chip key={t.id} selected={selected.includes(t.id)} onClick={() => toggle(t.id)}>
                 {selected.includes(t.id) ? <Check aria-hidden size={14} /> : null}
@@ -191,7 +184,7 @@ export function CompanyEditor({ open, company, initialName = "", onClose, onSave
             value={newTag}
             onChange={(e) => setNewTag(e.target.value)}
             placeholder="New tag, e.g. Fintech"
-            className={cx(controlClass, "h-9 pointer-coarse:h-11")}
+            className={cx(controlClass, "h-11 text-[16px]")}
           />
           <Button type="submit" icon={Plus} disabled={!newTag.trim()}>
             Add tag
@@ -200,7 +193,7 @@ export function CompanyEditor({ open, company, initialName = "", onClose, onSave
       </fieldset>
 
       {error ? (
-        <p role="alert" className="mt-4 text-small text-danger">
+        <p role="alert" className="mt-4 text-[15px] text-danger">
           {error}
         </p>
       ) : null}
@@ -244,7 +237,7 @@ function TagRow({ tag, onRenamed, onDeleted }: { tag: CompanyTag; onRenamed: (t:
           }
         }}
         disabled={busy}
-        className={cx(controlClass, "h-9 pointer-coarse:h-11")}
+        className={cx(controlClass, "h-11 text-[16px]")}
       />
       <IconButton label={`Save the new name of ${tag.name}`} icon={Check} disabled={!changed || busy} onClick={rename} />
       <IconButton label={`Delete tag ${tag.name}`} icon={Trash2} disabled={busy} onClick={() => setConfirming(true)} />

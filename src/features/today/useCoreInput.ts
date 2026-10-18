@@ -1,5 +1,5 @@
 'use client';
-// The input of lib/core buildToday / computeInsights, shared by /today and /insights.
+// The input of lib/core buildHome (buildToday + computeInsights), for /home.
 // useInsightsInput() (lib/data) already returns the complete input, contacts and the jobs columns
 // job_overview leaves out included, so this is a pass-through that keeps the screens' result shape.
 import type { CoreInput } from '../../../lib/core';

@@ -68,7 +68,7 @@ export function DotStrip({ items, legend, className, ...aria }: DotStripProps) {
           return (
             <li key={`${it.label}-${i}`} className="flex">
               {it.href ? (
-                <Link href={it.href} title={text} aria-label={text} className="-m-1 rounded-full p-1 hover:bg-surface-2">
+                <Link href={it.href} title={text} aria-label={text} className="-m-1 cursor-pointer rounded-full p-1 hover:bg-ink/[0.06]">
                   {dot}
                 </Link>
               ) : (

@@ -21,8 +21,8 @@ const tones = {
 export function Callout({ tone = "caution", title, children, icon, action, className }: CalloutProps) {
   const Icon = icon ?? (tone === "info" ? Info : TriangleAlert);
   return (
-    <div role="note" className={cx("flex gap-3 rounded-md p-4", tones[tone], className)}>
-      <Icon aria-hidden size={18} strokeWidth={1.75} className="mt-0.5 shrink-0" />
+    <div role="note" className={cx("flex gap-3 rounded-[16px] p-4", tones[tone], className)}>
+      <Icon aria-hidden size={18} strokeWidth={2} className="mt-0.5 shrink-0" />
       <div className="min-w-0 flex-1">
         {title ? <p className="text-small font-semibold">{title}</p> : null}
         <div className={cx("text-small text-ink", title ? "mt-1" : null)}>{children}</div>

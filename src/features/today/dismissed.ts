@@ -1,6 +1,6 @@
 'use client';
-// Snooze and "Not relevant" for Today items: per viewer, in localStorage under iv.today.dismissed
-// as {itemKey: untilISO} (spec 2.1). buildToday(input, {dismissed}) hides an item while until >= today.
+// "Not now" for Home's cards: per viewer, in localStorage under iv.today.dismissed as
+// {actionKey: untilISO}. buildHome(input, {dismissed}) hides a card while until >= today.
 // Every access is wrapped: the page works the same without storage (private window, blocked site data).
 import { useCallback, useEffect, useState } from 'react';
 import { addDays } from '../../../lib/core';

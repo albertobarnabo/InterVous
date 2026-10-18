@@ -1,6 +1,6 @@
 // Which applications belong to a company: jobs.company_id first, the company name as a fallback
-// (legacy rows and CLI rows written with company_create:false have no company_id).
-import { appPath as coreAppPath, nowSentence, type JobEvent as CoreEvent, type JobOverviewRow } from "../../../../../lib/core";
+// (legacy rows and command-line rows written without a company record have no company_id).
+import { appPath as coreAppPath } from "../../../../../lib/core";
 import type { Application } from "../../../../../lib/data";
 
 const norm = (s: string | null | undefined) => String(s ?? "").trim().toLowerCase();
@@ -10,7 +10,7 @@ export function belongsTo(app: Pick<Application, "company_id" | "company_name">,
   return norm(app.company_name) === norm(company.name);
 }
 
-/** The company's applications, newest activity first. */
+/** The company's applications, newest first. */
 export function appsForCompany(apps: Application[] | undefined, company: { id: string; name: string } | null): Application[] {
   if (!apps || !company) return [];
   return apps
@@ -22,23 +22,13 @@ export function appsForCompany(apps: Application[] | undefined, company: { id: s
     });
 }
 
-/** The date shown next to an application in a company list: the CV date for a draft, else the sent date (or none). */
-export function appDate(app: Pick<Application, "phase" | "applied_on" | "cv_built_on">): string | null {
-  return app.phase === "draft" ? (app.cv_built_on ?? null) : (app.applied_on ?? null);
-}
-
-/** True when the date appDate() shows is the sent date and the history is unsure about it. */
-export function appDateUnsure(app: Pick<Application, "phase" | "applied_on" | "uncertain">): boolean {
-  return app.phase !== "draft" && !!app.applied_on && ((app.uncertain ?? []) as string[]).includes("applied_on");
-}
-
 const GROUPS: Array<{ label: string; phases: string[] }> = [
-  { label: "in interviews", phases: ["interviewing", "offer"] },
-  { label: "waiting", phases: ["applied", "screening"] },
-  { label: "not sent", phases: ["draft"] },
+  { label: "at interview stage", phases: ["interviewing", "offer"] },
+  { label: "waiting for a reply", phases: ["applied", "screening"] },
+  { label: "not sent yet", phases: ["draft"] },
 ];
 
-/** "3 applications · 1 in interviews", or "No applications yet". */
+/** "3 applications · 1 waiting for a reply", or "No applications yet". */
 export function summaryLine(apps: Pick<Application, "phase">[]): string {
   if (!apps.length) return "No applications yet";
   const head = `${apps.length} application${apps.length === 1 ? "" : "s"}`;
@@ -49,12 +39,5 @@ export function summaryLine(apps: Pick<Application, "phase">[]): string {
   return `${head} · all closed`;
 }
 
-/** The view row typed for lib/core (job_overview columns are nullable in the generated types). */
-export const coreRow = (a: Application) => a as unknown as JobOverviewRow;
-
 /** '/applications/<slug or id>'. */
-export const dossierPath = (a: Application) => coreAppPath(coreRow(a));
-
-/** The plain "now" sentence of the list (lib/core/now.mjs). */
-export const nowOf = (a: Application, today: string) =>
-  nowSentence(coreRow(a), { today, events: a.events as unknown as CoreEvent[] });
+export const dossierPath = (a: Pick<Application, "id" | "slug">) => coreAppPath({ id: Number(a.id), slug: a.slug });

@@ -1,13 +1,7 @@
-import type { Metadata } from "next";
-import { Suspense } from "react";
-import { InsightsView } from "@/features/insights/InsightsView";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = { title: "Insights · InterVous" };
-
+// Insights now live on Home ("What we've learned so far"). next.config.mjs already redirects
+// /insights to /home; this is the fallback.
 export default function InsightsPage() {
-  return (
-    <Suspense>
-      <InsightsView />
-    </Suspense>
-  );
+  redirect("/home");
 }

@@ -49,8 +49,8 @@ export function Tooltip({ content, children, side = "top", className }: TooltipP
         id={id}
         hidden={!open}
         className={cx(
-          "pointer-events-none absolute left-1/2 z-30 w-max max-w-72 -translate-x-1/2 rounded-sm bg-ink px-2.5 py-1.5",
-          "text-caption font-normal text-bg shadow-2",
+          "pointer-events-none absolute left-1/2 z-30 w-max max-w-72 -translate-x-1/2 rounded-[10px] bg-white/95 px-3 py-1.5",
+          "text-small text-ink shadow-[0_0_0_0.5px_rgba(15,23,42,0.12),0_8px_24px_rgba(15,23,42,0.14)]",
           side === "top" ? "bottom-full mb-2" : "top-full mt-2",
           className,
         )}

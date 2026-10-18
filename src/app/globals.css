@@ -1,44 +1,49 @@
 @import "tailwindcss";
 
 /*
- * InterVous visual system (docs/SPEC.md section 3).
- * Tokens live on :root and are mapped into Tailwind in @theme inline below.
- * scripts/contrast.mjs parses the light and dark blocks of this file and fails
- * `npm run lint` when any text/background pair drops under 4.5:1, so keep the
- * light block, the dark block and the dark media block as plain `--name: #hex;` lines.
+ * InterVous visual system: light only, Apple-style glass.
+ *
+ *  - One token block on :root, mapped into Tailwind in @theme inline below
+ *    (bg-bg, bg-surface, text-ink, text-ink-2, text-accent, ...).
+ *  - Glass material: the .iv-glass / .iv-glass-thick / .iv-glass-solid classes (or the
+ *    <GlassCard> primitive in src/ui). Long text (job descriptions, notes) goes on
+ *    .iv-glass-solid, which is nearly opaque.
+ *  - The page backdrop (body::before) holds three pale, blurred colour fields so the glass
+ *    has something to refract.
+ *  - Every clickable element gets cursor:pointer from the base layer below.
+ *
+ * scripts/contrast.mjs parses the :root token block and fails `npm run lint` when a
+ * text/background pair (including text on glass over the brightest colour field) drops
+ * under 4.5:1. Keep the token block as plain `--name: #hex;` lines.
  */
 
-/* Dark mode follows the system unless the page pins data-theme. */
-@custom-variant dark {
-  @media (prefers-color-scheme: dark) {
-    &:where(:root:not([data-theme="light"]) *, :root:not([data-theme="light"])) {
-      @slot;
-    }
-  }
-  &:where([data-theme="dark"], [data-theme="dark"] *) {
-    @slot;
-  }
-}
+/* Dark mode is gone. `dark:` classes left anywhere never match. */
+@custom-variant dark (&:where(.iv-dark-mode-removed, .iv-dark-mode-removed *));
 
-/* ── Light (default) ─────────────────────────────────────────────── */
-:root,
-[data-theme="light"] {
+/* ── Tokens (light only) ─────────────────────────────────────────── */
+:root {
   color-scheme: light;
-  --bg: #F6F5F1;
+  --bg: #F4F6FA;
   --surface: #FFFFFF;
-  --surface-2: #EFEDE7;
-  --line: #E2DFD6;
-  --line-strong: #CFCABD;
-  --ink: #1D1B16;
-  --ink-2: #4A463D;
-  --ink-3: #6E695E;
+  --surface-2: #EDF0F5;
+  --line: #E3E8EF;
+  --line-strong: #CBD3DE;
+  --ink: #0F172A;
+  --ink-2: #475569;
+  --ink-3: #5A6578;
   --accent: #1A6B6B;
+  --accent-hover: #1F7A7A;
   --accent-ink: #FFFFFF;
-  --accent-soft: #E3F0EE;
-  --danger: #A3302A;
-  --danger-soft: #F8E6E4;
+  --accent-soft: #E1F0EE;
+  --danger: #B3261E;
+  --danger-soft: #FCE8E6;
 
-  /* phase pills: text on tint. Names follow phaseTokens() in lib/core/phases.mjs; values must equal PHASE_COLORS there. */
+  /* Backdrop colour fields (pale teal, pale blue, pale peach). */
+  --field-teal: #BFE3DD;
+  --field-blue: #CFDDF7;
+  --field-peach: #F8DCCB;
+
+  /* Status pills: text on tint. Names follow phaseTokens() in lib/core/phases.mjs; values must equal PHASE_COLORS.light there. */
   --phase-draft-fg: #5B5648;
   --phase-draft-bg: #EEECE6;
   --phase-applied-fg: #2F4FA8;
@@ -59,119 +64,46 @@
   --phase-skipped-bg: #EFEDE7;
   --caution-fg: #8A5A00;
   --caution-bg: #FBF0D9;
-
-  --shadow-1: 0 0 0 1px var(--line), 0 1px 2px rgb(29 27 22 / 0.06);
-  --shadow-2: 0 8px 24px rgb(29 27 22 / 0.10);
 }
 
-/* ── Dark, pinned ────────────────────────────────────────────────── */
-:root[data-theme="dark"],
-[data-theme="dark"] {
-  color-scheme: dark;
-  --bg: #15140F;
-  --surface: #1D1C17;
-  --surface-2: #26241E;
-  --line: #34322A;
-  --line-strong: #4A473D;
-  --ink: #EDEAE2;
-  --ink-2: #BEB9AD;
-  --ink-3: #9A9588;
-  --accent: #5FB8AE;
-  --accent-ink: #15140F;
-  --accent-soft: #1F3533;
-  --danger: #F2A49D;
-  --danger-soft: #3A1F1C;
-
-  --phase-draft-fg: #C9C4B8;
-  --phase-draft-bg: #2A2822;
-  --phase-applied-fg: #A9BDF5;
-  --phase-applied-bg: #1E2740;
-  --phase-screening-fg: #C9B3F0;
-  --phase-screening-bg: #2B2340;
-  --phase-interviewing-fg: #7FD0C6;
-  --phase-interviewing-bg: #16302E;
-  --phase-offer-fg: #9BD68A;
-  --phase-offer-bg: #1D2E18;
-  --phase-rejected-fg: #F2A49D;
-  --phase-rejected-bg: #3A1F1C;
-  --phase-no-reply-fg: #B5B0A4;
-  --phase-no-reply-bg: #2A2822;
-  --phase-withdrawn-fg: #B5B0A4;
-  --phase-withdrawn-bg: #2A2822;
-  --phase-skipped-fg: #B5B0A4;
-  --phase-skipped-bg: #2A2822;
-  --caution-fg: #F0C46A;
-  --caution-bg: #3A2E12;
-
-  --shadow-1: 0 0 0 1px var(--line), 0 1px 2px rgb(0 0 0 / 0.30);
-  --shadow-2: 0 8px 24px rgb(0 0 0 / 0.45);
-}
-
-/* ── Dark, from the system (same values as the pinned block) ─────── */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    color-scheme: dark;
-    --bg: #15140F;
-    --surface: #1D1C17;
-    --surface-2: #26241E;
-    --line: #34322A;
-    --line-strong: #4A473D;
-    --ink: #EDEAE2;
-    --ink-2: #BEB9AD;
-    --ink-3: #9A9588;
-    --accent: #5FB8AE;
-    --accent-ink: #15140F;
-    --accent-soft: #1F3533;
-    --danger: #F2A49D;
-    --danger-soft: #3A1F1C;
-
-    --phase-draft-fg: #C9C4B8;
-    --phase-draft-bg: #2A2822;
-    --phase-applied-fg: #A9BDF5;
-    --phase-applied-bg: #1E2740;
-    --phase-screening-fg: #C9B3F0;
-    --phase-screening-bg: #2B2340;
-    --phase-interviewing-fg: #7FD0C6;
-    --phase-interviewing-bg: #16302E;
-    --phase-offer-fg: #9BD68A;
-    --phase-offer-bg: #1D2E18;
-    --phase-rejected-fg: #F2A49D;
-    --phase-rejected-bg: #3A1F1C;
-    --phase-no-reply-fg: #B5B0A4;
-    --phase-no-reply-bg: #2A2822;
-    --phase-withdrawn-fg: #B5B0A4;
-    --phase-withdrawn-bg: #2A2822;
-    --phase-skipped-fg: #B5B0A4;
-    --phase-skipped-bg: #2A2822;
-    --caution-fg: #F0C46A;
-    --caution-bg: #3A2E12;
-
-    --shadow-1: 0 0 0 1px var(--line), 0 1px 2px rgb(0 0 0 / 0.30);
-    --shadow-2: 0 8px 24px rgb(0 0 0 / 0.45);
-  }
-}
-
-/* Shape, layers and layout constants (not themed). */
+/* Glass, shape, layers and layout constants. */
 :root {
-  --r-sm: 8px;
-  --r-md: 12px;
+  /* Glass material. Regular = cards, nav, chips. Thick = menus, popovers, sheets. Solid = long text. */
+  --glass-bg: rgba(255, 255, 255, 0.58);
+  --glass-bg-thick: rgba(255, 255, 255, 0.78);
+  --glass-bg-solid: rgba(255, 255, 255, 0.88);
+  --glass-border: rgba(255, 255, 255, 0.65);
+  --glass-blur: blur(24px) saturate(180%);
+  --glass-shadow: 0 1px 0 rgba(255, 255, 255, 0.9) inset, 0 8px 30px rgba(15, 23, 42, 0.08);
+  --glass-shadow-float: 0 1px 0 rgba(255, 255, 255, 0.9) inset, 0 18px 50px rgba(15, 23, 42, 0.16);
+  /* A hairline that reads on glass (the white border alone vanishes on pale fields). */
+  --glass-edge: 0 0 0 0.5px rgba(15, 23, 42, 0.08);
+
+  --shadow-1: 0 0 0 0.5px rgba(15, 23, 42, 0.08), 0 1px 2px rgba(15, 23, 42, 0.05);
+  --shadow-2: 0 0 0 0.5px rgba(15, 23, 42, 0.08), 0 12px 40px rgba(15, 23, 42, 0.14);
+
+  --r-sm: 10px;
+  --r-md: 14px;
   --r-lg: 20px;
+  --r-xl: 28px;
   --z-sticky: 10;
   --z-nav: 20;
   --z-popover: 30;
   --z-dialog: 40;
   --z-palette: 50;
   --z-toast: 60;
-  --topbar-h: 56px;
-  --tabbar-h: 56px;
+  --topbar-h: 64px;
+  --tabbar-h: 64px;
   --content-max: 1120px;
   --reading-max: 720px;
 }
 
 @theme inline {
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-serif: var(--font-source-serif), Georgia, serif;
-  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  /* One family everywhere. font-serif and font-mono are kept as names so older markup still
+     compiles, but both render Geist Sans. */
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-serif: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 
   --color-bg: var(--bg);
   --color-surface: var(--surface);
@@ -182,6 +114,7 @@
   --color-ink-2: var(--ink-2);
   --color-ink-3: var(--ink-3);
   --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
   --color-accent-ink: var(--accent-ink);
   --color-accent-soft: var(--accent-soft);
   --color-danger: var(--danger);
@@ -211,20 +144,21 @@
   --radius-sm: var(--r-sm);
   --radius-md: var(--r-md);
   --radius-lg: var(--r-lg);
+  --radius-xl: var(--r-xl);
 
   --shadow-1: var(--shadow-1);
   --shadow-2: var(--shadow-2);
 
-  /* Type scale (3.3). caption is the floor: nothing smaller, nothing uppercase. */
+  /* Type scale. caption (13px) is the floor for labels; secondary text is small (14px) or larger. */
   --text-caption: 13px;
   --text-caption--line-height: 18px;
   --text-caption--font-weight: 500;
   --text-small: 14px;
-  --text-small--line-height: 20px;
+  --text-small--line-height: 21px;
   --text-body: 16px;
-  --text-body--line-height: 24px;
-  --text-reading: 18px;
-  --text-reading--line-height: 30px;
+  --text-body--line-height: 1.55;
+  --text-reading: 17px;
+  --text-reading--line-height: 1.65;
   --text-h3: 20px;
   --text-h3--line-height: 28px;
   --text-h3--font-weight: 600;
@@ -233,13 +167,13 @@
   --text-h2--font-weight: 600;
   --text-h1: 34px;
   --text-h1--line-height: 40px;
-  --text-h1--font-weight: 600;
+  --text-h1--font-weight: 650;
   --text-h1-sm: 28px;
   --text-h1-sm--line-height: 34px;
-  --text-h1-sm--font-weight: 600;
+  --text-h1-sm--font-weight: 650;
   --text-figure: 44px;
   --text-figure--line-height: 48px;
-  --text-figure--font-weight: 600;
+  --text-figure--font-weight: 650;
 
   --container-content: 1120px;
   --container-reading: 720px;
@@ -247,17 +181,42 @@
 
 @layer base {
   html {
+    color-scheme: light;
     -webkit-text-size-adjust: 100%;
+    /* The colour sits on html so the fixed colour fields (body::before, z-index -1) paint above it. */
+    background: var(--bg);
   }
 
   body {
-    background: var(--bg);
+    position: relative;
+    min-height: 100dvh;
+    background: transparent;
     color: var(--ink);
     font-family: var(--font-sans);
     font-size: 16px;
-    line-height: 24px;
+    line-height: 1.55;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* The backdrop: three large, very soft colour fields, fixed behind everything. */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: -10vmax;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      radial-gradient(42vmax 36vmax at 14% 18%, var(--field-teal) 0%, transparent 70%),
+      radial-gradient(46vmax 38vmax at 90% 22%, var(--field-blue) 0%, transparent 70%),
+      radial-gradient(44vmax 36vmax at 62% 94%, var(--field-peach) 0%, transparent 72%);
+  }
+
+  h1,
+  h2,
+  h3 {
+    letter-spacing: -0.015em;
   }
 
   ::selection {
@@ -273,21 +232,92 @@
   a {
     color: inherit;
   }
+
+  /* Everything clickable shows the hand. Primitives repeat it (cursor-pointer) so a stray
+     `cursor-default` utility cannot win. */
+  a[href],
+  button,
+  summary,
+  select,
+  label[for],
+  label:has(input[type="checkbox"]),
+  label:has(input[type="radio"]),
+  input[type="checkbox"],
+  input[type="radio"],
+  input[type="file"],
+  input[type="submit"],
+  input[type="button"],
+  input[type="reset"],
+  input[type="color"],
+  input[type="range"],
+  [role="button"],
+  [role="link"],
+  [role="tab"],
+  [role="radio"],
+  [role="checkbox"],
+  [role="switch"],
+  [role="option"],
+  [role="menuitem"],
+  [role="menuitemradio"],
+  [role="menuitemcheckbox"],
+  [data-clickable] {
+    cursor: pointer;
+  }
+  /* Pseudo-elements get their own rules: one unknown selector would drop a whole list. */
+  ::file-selector-button {
+    cursor: pointer;
+  }
+  ::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+  }
+
+  :disabled,
+  [aria-disabled="true"],
+  [data-disabled] {
+    cursor: not-allowed;
+  }
 }
 
 @layer components {
-  /* Reading surfaces: JD, answers. Serif, 18/30, at most 68 characters wide. */
+  /* ── Glass material ──────────────────────────────────────────────
+     .iv-glass        regular: cards, the nav bar, chips (58% white, 24px blur, saturate 180%)
+     .iv-glass-thick  menus, popovers, sheets, toasts (78% white)
+     .iv-glass-solid  long text: job descriptions, notes (88% white)
+     Without backdrop-filter support, or with "Reduce transparency" on, all three are opaque white. */
+  .iv-glass,
+  .iv-glass-thick,
+  .iv-glass-solid {
+    background: var(--glass-bg);
+    -webkit-backdrop-filter: var(--glass-blur);
+    backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-edge), var(--glass-shadow);
+  }
+  .iv-glass-thick {
+    background: var(--glass-bg-thick);
+  }
+  .iv-glass-solid {
+    background: var(--glass-bg-solid);
+  }
+
+  /* Dimmed, slightly blurred layer under dialogs and sheets. */
+  .iv-scrim {
+    background: rgba(15, 23, 42, 0.22);
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+  }
+
+  /* Reading surfaces: job descriptions, answers, notes. Sans, 17px, at most 70 characters wide. */
   .iv-reading {
-    font-family: var(--font-serif);
-    font-size: 18px;
-    line-height: 30px;
-    max-width: 68ch;
+    font-family: var(--font-sans);
+    font-size: 17px;
+    line-height: 1.65;
+    max-width: 70ch;
     color: var(--ink);
   }
 
-  /* Dates, day counts and numbers. */
+  /* Dates, day counts and numbers: same family, tabular figures. */
   .iv-num {
-    font-family: var(--font-mono);
     font-variant-numeric: tabular-nums;
   }
 
@@ -302,6 +332,59 @@
     .iv-page {
       padding-inline: 32px;
     }
+  }
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .iv-glass,
+  .iv-glass-thick,
+  .iv-glass-solid {
+    background: #FFFFFF;
+  }
+  .iv-scrim {
+    background: rgba(15, 23, 42, 0.4);
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .iv-glass,
+  .iv-glass-thick,
+  .iv-glass-solid {
+    background: #FFFFFF;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  .iv-scrim {
+    background: rgba(15, 23, 42, 0.4);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  body::before {
+    opacity: 0.35;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .iv-glass,
+  .iv-glass-thick,
+  .iv-glass-solid {
+    background: #FFFFFF;
+    border-color: var(--line-strong);
+  }
+}
+
+@media print {
+  body::before {
+    display: none;
+  }
+  .iv-glass,
+  .iv-glass-thick,
+  .iv-glass-solid {
+    background: #FFFFFF;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    box-shadow: none;
+    border-color: #CBD3DE;
   }
 }
 

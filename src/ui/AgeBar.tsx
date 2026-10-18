@@ -23,7 +23,7 @@ export function AgeBar({ days, max = 60, ticks = [21, 45], className, showLabel 
       <span
         role="img"
         aria-label={d === null ? "Date unknown" : `${d} days on a ${max}-day scale`}
-        className="relative block h-1.5 min-w-12 flex-1 overflow-hidden rounded-full bg-surface-2"
+        className="relative block h-1.5 min-w-12 flex-1 overflow-hidden rounded-full bg-ink/[0.08]"
       >
         <span
           className={cx("absolute inset-y-0 left-0 rounded-full", late ? "bg-caution" : "bg-ink-3")}
@@ -33,7 +33,7 @@ export function AgeBar({ days, max = 60, ticks = [21, 45], className, showLabel 
           <span
             key={t}
             title={TICK_TITLE[t] ?? `${t} days`}
-            className="absolute inset-y-0 w-px bg-bg"
+            className="absolute inset-y-0 w-px bg-white"
             style={{ left: `${(t / max) * 100}%` }}
           />
         ))}

@@ -1,100 +1,79 @@
 "use client";
-// One list row (docs/SPEC.md 2.2): 64px, a single <a> to the dossier. Left to right: company mark,
-// role with company and location, the now sentence (with the age bar while waiting), the date,
-// the phase pill, and the Unconfirmed / Visa chips. Under 768px it becomes a two-line card.
+// One row of /applications: logo (or initials), company, role, the status in plain words, a short
+// fact ("Waiting 17 days"), and ONE button (Mark as sent / Update / Open). The whole row opens the
+// application page; the button sits above the row's link.
 import Link from "next/link";
-import { AgeBar, CompanyMark, PhasePill, Tag, cx } from "@/ui";
+import { Button, ButtonLink, CompanyMark, StatusPill, cx } from "@/ui";
 import type { AppItem } from "./model";
-import { useTransitionNavigate } from "./viewTransition";
 
-function UnconfirmedTag({ item }: { item: AppItem }) {
-  if (!item.unconfirmed.length) return null;
+export type RowHandlers = {
+  onMarkSent: (item: AppItem) => void;
+  onUpdate: (item: AppItem) => void;
+};
+
+function RowButton({ item, h }: { item: AppItem; h: RowHandlers }) {
+  const label = `${item.company}, ${item.role}`;
+  switch (item.action) {
+    case "mark_sent":
+      return (
+        <Button size="sm" variant="primary" onClick={() => h.onMarkSent(item)} aria-label={`Mark as sent: ${label}`}>
+          Mark as sent
+        </Button>
+      );
+    case "update":
+      return (
+        <Button size="sm" onClick={() => h.onUpdate(item)} aria-label={`Update: ${label}`}>
+          Update
+        </Button>
+      );
+    default:
+      return (
+        <ButtonLink size="sm" variant="quiet" href={item.href} aria-label={`Open: ${label}`} tabIndex={-1}>
+          Open
+        </ButtonLink>
+      );
+  }
+}
+
+export function AppRow({ item, h }: { item: AppItem; h: RowHandlers }) {
+  const where = item.location ? ` · ${item.location}` : "";
   return (
-    <Tag tone="caution" title={`Not confirmed yet: ${item.unconfirmed.join(", ")}`}>
-      Unconfirmed
-    </Tag>
-  );
-}
-
-function VisaTag({ item }: { item: AppItem }) {
-  if (!item.visa) return null;
-  return <Tag title="This role needs a visa or work permit">Visa</Tag>;
-}
-
-/** The age bar is shown only while waiting for a reply (applied, screening). */
-function showsAge(item: AppItem) {
-  return item.waiting !== null && (item.phase === "applied" || item.phase === "screening");
-}
-
-export function AppRow({ item }: { item: AppItem }) {
-  const navigate = useTransitionNavigate();
-  const where = [item.company, item.location].filter(Boolean).join(" · ");
-  const age = showsAge(item);
-  const srDate = item.date.on ? `${item.date.label}.` : "";
-
-  return (
-    <Link
-      href={item.href}
-      data-item-link={item.id}
-      onClick={(e) => navigate(e, item.id, item.href)}
+    <div
       className={cx(
-        "group block rounded-md outline-offset-[-2px] transition-colors duration-[120ms] ease-out",
-        "hover:bg-surface-2 focus-visible:bg-surface-2",
+        "group relative grid items-center gap-x-4 gap-y-2 px-4 py-3.5 transition-colors duration-150 sm:px-5",
+        "grid-cols-[40px_minmax(0,1fr)_auto] md:grid-cols-[40px_minmax(0,1.4fr)_minmax(0,1fr)_8.5rem]",
+        "hover:bg-white/45 has-[a[data-row-link]:focus-visible]:bg-white/60",
+        "has-[a[data-row-link]:focus-visible]:shadow-[inset_0_0_0_2px_var(--accent)]",
       )}
     >
-      {/* Desktop: one 64px line */}
-      <span className="hidden h-16 grid-cols-[32px_minmax(0,1.3fr)_minmax(0,1fr)_52px_264px] items-center gap-3 px-4 md:grid">
-        <span data-vt="mark" className="block size-8 rounded-sm">
-          <CompanyMark name={item.company} logoUrl={item.logoUrl} size={32} />
-        </span>
-        <span className="min-w-0">
-          <span data-vt="role" className="block truncate text-body font-medium text-ink">
-            {item.role}
-          </span>
-          <span className="block truncate text-small text-ink-2">{where}</span>
-        </span>
-        <span className="min-w-0">
-          <span className={cx("block text-small text-ink-2", age ? "truncate" : "line-clamp-2")} title={item.now}>
-            {item.now}
-          </span>
-          {age ? <AgeBar days={item.waiting} className="mt-1.5 max-w-56" /> : null}
-        </span>
-        <span className="iv-num text-right text-caption text-ink-3" title={item.date.label}>
-          <span className="sr-only">{srDate}</span>
-          <span aria-hidden>{item.date.text || "—"}</span>
-        </span>
-        <span className="flex min-w-0 items-center gap-1.5 overflow-hidden">
-          <PhasePill phase={item.phase} />
-          <UnconfirmedTag item={item} />
-          <VisaTag item={item} />
-        </span>
+      <span className="row-span-2 block self-start rounded-full md:row-span-1 md:self-center">
+        <CompanyMark name={item.company} logoUrl={item.logoUrl} size={40} />
       </span>
 
-      {/* Mobile: a two-line card */}
-      <span className="flex gap-3 px-4 py-3 md:hidden">
-        <span data-vt="mark" className="mt-0.5 block size-8 shrink-0 rounded-sm">
-          <CompanyMark name={item.company} logoUrl={item.logoUrl} size={32} />
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="flex items-start justify-between gap-2">
-            <span className="min-w-0">
-              <span data-vt="role" className="line-clamp-2 text-body font-medium text-ink">
-                {item.role}
-              </span>
-              <span className="block truncate text-small text-ink-2">{where}</span>
-            </span>
-            <PhasePill phase={item.phase} size="sm" className="mt-0.5" />
+      <div className="min-w-0">
+        <Link
+          href={item.href}
+          data-row-link
+          data-item-link={item.id}
+          className="block min-w-0 after:absolute after:inset-0 after:content-[''] focus-visible:outline-none"
+        >
+          <span className="block truncate text-body font-semibold text-ink">{item.company}</span>
+          <span className="line-clamp-2 text-small text-ink-2 md:line-clamp-1">
+            {item.role}
+            <span className="hidden lg:inline">{where}</span>
           </span>
-          <span className="mt-1.5 block text-small text-ink-2">{item.now}</span>
-          {age ? <AgeBar days={item.waiting} className="mt-2" /> : null}
-          {item.unconfirmed.length || item.visa ? (
-            <span className="mt-2 flex flex-wrap gap-1.5">
-              <UnconfirmedTag item={item} />
-              <VisaTag item={item} />
-            </span>
-          ) : null}
-        </span>
-      </span>
-    </Link>
+        </Link>
+      </div>
+
+      {/* Status: under the name on phones, its own column from 768px */}
+      <div className="col-start-2 row-start-2 flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1 md:col-start-3 md:row-start-1">
+        <StatusPill status={item.phase} size="sm" />
+        {item.detail ? <span className="iv-num text-small text-ink-2">{item.detail}</span> : null}
+      </div>
+
+      <div className="relative z-10 col-start-3 row-span-2 row-start-1 self-center justify-self-end md:col-start-4 md:row-span-1">
+        <RowButton item={item} h={h} />
+      </div>
+    </div>
   );
 }

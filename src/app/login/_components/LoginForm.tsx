@@ -63,17 +63,17 @@ export default function LoginForm() {
         title="Reset your password"
         lead="We email you a link. It opens a page where you choose a new one."
         footer={
-          <button type="button" onClick={() => switchTo("signin")} className="text-accent underline-offset-4 hover:underline">
+          <button type="button" onClick={() => switchTo("signin")} className="cursor-pointer rounded-full px-2 py-1 font-medium text-accent underline-offset-4 hover:underline">
             Back to sign in
           </button>
         }
       >
         {sent ? (
-          <p role="status" className="rounded-sm bg-accent-soft px-3 py-2.5 text-small text-ink">
+          <p role="status" className="rounded-[14px] bg-accent-soft px-4 py-3 text-body text-ink">
             If <span className="font-medium">{sent}</span> has an account, the link is on its way. Check your inbox.
           </p>
         ) : (
-          <form onSubmit={submit} className="flex flex-col gap-4" noValidate={false}>
+          <form onSubmit={submit} className="flex flex-col gap-5" noValidate={false}>
             <Field label="Email">
               <Input
                 type="email"
@@ -82,15 +82,15 @@ export default function LoginForm() {
                 autoComplete="email"
                 autoFocus
                 required
-                className="h-11 text-body"
+                className="h-12"
               />
             </Field>
             {error ? (
-              <p role="alert" className="rounded-sm bg-danger-soft px-3 py-2 text-small text-danger">
+              <p role="alert" className="rounded-[14px] bg-danger-soft px-4 py-3 text-small text-danger">
                 {error}
               </p>
             ) : null}
-            <Button type="submit" variant="primary" loading={busy} className="h-11 w-full">
+            <Button type="submit" variant="primary" size="lg" loading={busy} className="w-full">
               Send the reset link
             </Button>
           </form>
@@ -100,8 +100,8 @@ export default function LoginForm() {
   }
 
   return (
-    <AuthCard title="Sign in" lead="Your applications, and what needs you today.">
-      <form onSubmit={submit} className="flex flex-col gap-4">
+    <AuthCard title="Sign in" lead="Your job applications, and what to do next.">
+      <form onSubmit={submit} className="flex flex-col gap-5">
         <Field label="Email">
           <Input
             type="email"
@@ -110,7 +110,7 @@ export default function LoginForm() {
             autoComplete="username"
             autoFocus
             required
-            className="h-11 text-body"
+            className="h-12"
           />
         </Field>
         <div className="flex flex-col gap-1.5">
@@ -118,7 +118,7 @@ export default function LoginForm() {
             <label htmlFor="password" className="text-small font-medium text-ink">
               Password
             </label>
-            <button type="button" onClick={() => switchTo("forgot")} className="text-small text-accent underline-offset-4 hover:underline">
+            <button type="button" onClick={() => switchTo("forgot")} className="cursor-pointer text-small font-medium text-accent underline-offset-4 hover:underline">
               Forgot it?
             </button>
           </div>
@@ -133,11 +133,11 @@ export default function LoginForm() {
           />
         </div>
         {error ? (
-          <p id="signin-error" role="alert" className="rounded-sm bg-danger-soft px-3 py-2 text-small text-danger">
+          <p id="signin-error" role="alert" className="rounded-[14px] bg-danger-soft px-4 py-3 text-small text-danger">
             {error}
           </p>
         ) : null}
-        <Button type="submit" variant="primary" loading={busy} disabled={!email.trim() || !password} className="h-11 w-full">
+        <Button type="submit" variant="primary" size="lg" loading={busy} disabled={!email.trim() || !password} className="mt-1 w-full">
           {busy ? "Signing in…" : "Sign in"}
         </Button>
       </form>

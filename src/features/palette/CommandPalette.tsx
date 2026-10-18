@@ -16,7 +16,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../../../contexts/AuthContext";
 import { appPath, formatShort } from "../../../lib/core";
 import { logEvent, updateApplication, useApplications, type Application, type EventKind } from "../../../lib/data";
-import { Button, CompanyMark, DateInput, Field, Input, Kbd, PhasePill, cx, useToast } from "@/ui";
+import { Button, CompanyMark, DateInput, Field, Input, Kbd, StatusPill, cx, useToast } from "@/ui";
 import { OPEN_PALETTE, onShellEvent, openShortcuts } from "@/ui/events";
 import { listCompanies } from "@/app/(app)/companies/_lib/companies";
 import { openNewApplicationWith } from "@/features/new-application/events";
@@ -26,7 +26,7 @@ import { useToday } from "./useToday";
 type Step = { type: "sent"; app: Application } | { type: "reply"; app: Application } | null;
 
 /**
- * ⌘K (spec 2.8): a Headless UI Combobox in a Dialog. Searches applications, companies and
+ * ⌘K: a Headless UI Combobox in a glass Dialog. Searches applications, companies, pages and
  * actions. "Mark … as sent" and "Log a reply for …" ask one short question in place, then write.
  */
 export function CommandPalette() {
@@ -119,14 +119,11 @@ export function CommandPalette() {
 
   return (
     <Dialog open={open} onClose={close} className="relative z-50">
-      <DialogBackdrop
-        transition
-        className="fixed inset-0 bg-[rgb(21_20_15/0.40)] backdrop-blur-[2px] transition-opacity duration-[160ms] ease-out data-closed:opacity-0"
-      />
+      <DialogBackdrop transition className="iv-scrim fixed inset-0 transition-opacity duration-[160ms] ease-out data-closed:opacity-0" />
       <div className="fixed inset-0 flex w-screen items-start justify-center overflow-y-auto p-4 pt-[min(12vh,96px)]">
         <DialogPanel
           transition
-          className="w-full max-w-xl overflow-hidden rounded-lg bg-surface shadow-2 ring-1 ring-line transition duration-[160ms] ease-out data-closed:scale-[0.98] data-closed:opacity-0 motion-reduce:data-closed:scale-100"
+          className="iv-glass-thick w-full max-w-xl overflow-hidden rounded-xl shadow-[0_0_0_0.5px_rgba(15,23,42,0.08),0_1px_0_rgba(255,255,255,0.9)_inset,0_24px_60px_rgba(15,23,42,0.22)] transition duration-[160ms] ease-out data-closed:scale-[0.98] data-closed:opacity-0 motion-reduce:data-closed:scale-100"
         >
           <DialogTitle className="sr-only">Search or jump to</DialogTitle>
           {step ? (
@@ -137,7 +134,7 @@ export function CommandPalette() {
               onChange={(it) => it && run(it.command)}
               immediate
             >
-              <div className="flex items-center gap-3 border-b border-line px-4">
+              <div className="flex items-center gap-3 border-b border-ink/[0.06] px-5">
                 <Search aria-hidden size={18} className="shrink-0 text-ink-3" />
                 <ComboboxInput
                   autoFocus
@@ -163,27 +160,27 @@ export function CommandPalette() {
               </div>
               <ComboboxOptions static className="max-h-[min(60vh,440px)] overflow-y-auto overscroll-contain p-2 empty:hidden">
                 {groups.map((g) => (
-                  <div key={g.group} role="presentation" className="pb-1 [&+&]:border-t [&+&]:border-line [&+&]:pt-1">
-                    <p role="presentation" className="px-2.5 pb-1 pt-2 text-caption font-normal text-ink-3">
+                  <div key={g.group} role="presentation" className="pb-1 [&+&]:border-t [&+&]:border-ink/[0.06] [&+&]:pt-1">
+                    <p role="presentation" className="px-3 pb-1 pt-2 text-caption text-ink-2">
                       {g.group}
                     </p>
                     {g.items.map((it) => (
                       <ComboboxOption
                         key={it.id}
                         value={it}
-                        className="group flex min-h-11 cursor-default items-center gap-3 rounded-sm px-2.5 py-1.5 select-none data-focus:bg-surface-2"
+                        className="group flex min-h-11 cursor-pointer items-center gap-3 rounded-[14px] px-3 py-1.5 select-none data-focus:bg-white/80 data-focus:shadow-[0_0_0_0.5px_rgba(15,23,42,0.08)]"
                       >
                         <ItemIcon item={it} />
                         <span className="min-w-0 flex-1">
-                          <span className="block truncate text-small text-ink">{it.label}</span>
-                          {it.sub ? <span className="block truncate text-caption font-normal text-ink-3">{it.sub}</span> : null}
+                          <span className="block truncate text-[15px] text-ink">{it.label}</span>
+                          {it.sub ? <span className="block truncate text-small text-ink-2">{it.sub}</span> : null}
                         </span>
                         {it.phase ? (
                           <span className="hidden sm:block">
-                            <PhasePill phase={it.phase as Application["phase"] & string} size="sm" />
+                            <StatusPill status={it.phase as Application["phase"] & string} size="sm" />
                           </span>
                         ) : null}
-                        {it.hint ? <span className="hidden font-mono text-caption text-ink-3 sm:inline">{it.hint}</span> : null}
+                        {it.hint ? <span className="hidden text-caption text-ink-3 sm:inline">{it.hint}</span> : null}
                         <CornerDownLeft aria-hidden size={14} className="invisible shrink-0 text-ink-3 group-data-focus:visible" />
                       </ComboboxOption>
                     ))}
@@ -198,11 +195,11 @@ export function CommandPalette() {
                     className="mt-3"
                     onClick={() => run({ type: "new", company: query.trim() })}
                   >
-                    New application at {query.trim()}
+                    Add a job at {query.trim()}
                   </Button>
                 </div>
               ) : null}
-              <div className="hidden items-center gap-4 border-t border-line px-4 py-2.5 text-caption font-normal text-ink-3 sm:flex">
+              <div className="hidden items-center gap-4 border-t border-ink/[0.06] px-5 py-2.5 text-caption text-ink-2 sm:flex">
                 <span className="flex items-center gap-1.5">
                   <Kbd>↑</Kbd>
                   <Kbd>↓</Kbd> move
@@ -226,18 +223,18 @@ function ItemIcon({ item }: { item: PaletteItem }) {
   if (item.mark) return <CompanyMark name={item.mark.name} logoUrl={item.mark.logoUrl} size={28} />;
   const Icon = item.icon;
   return (
-    <span aria-hidden className="flex size-7 shrink-0 items-center justify-center rounded-sm bg-surface-2 text-ink-2">
+    <span aria-hidden className="flex size-7 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
       {Icon ? <Icon size={16} strokeWidth={1.75} /> : null}
     </span>
   );
 }
 
 const REPLY_KINDS: Array<{ kind: EventKind; label: string }> = [
-  { kind: "reply", label: "A reply" },
-  { kind: "interview_scheduled", label: "Interview invite" },
-  { kind: "assessment", label: "Assessment" },
-  { kind: "rejection", label: "Rejection" },
-  { kind: "auto_ack", label: "Auto-reply" },
+  { kind: "reply", label: "They replied" },
+  { kind: "interview_scheduled", label: "Interview booked" },
+  { kind: "assessment", label: "A test or task" },
+  { kind: "rejection", label: "Rejected" },
+  { kind: "auto_ack", label: "Automatic email only" },
 ];
 
 /** The one question an action needs (a date, a kind of reply), asked inside the palette. */
@@ -285,7 +282,7 @@ function StepForm({ step, onBack, onDone }: { step: NonNullable<Step>; onBack: (
         void submit();
       }}
     >
-      <div className="flex items-center gap-3 border-b border-line px-3 py-3">
+      <div className="flex items-center gap-3 border-b border-ink/[0.06] px-3 py-3">
         <Button size="sm" variant="quiet" icon={ArrowLeft} onClick={onBack}>
           Back
         </Button>
@@ -305,8 +302,10 @@ function StepForm({ step, onBack, onDone }: { step: NonNullable<Step>; onBack: (
                 aria-checked={kind === k.kind}
                 onClick={() => setKind(k.kind)}
                 className={cx(
-                  "h-8 rounded-sm border px-2.5 text-small font-medium transition-colors duration-[120ms] pointer-coarse:h-11",
-                  kind === k.kind ? "border-accent bg-accent-soft text-accent" : "border-line-strong text-ink-2 hover:bg-surface-2",
+                  "h-9 cursor-pointer rounded-full px-4 text-small font-medium transition-[background-color,box-shadow] duration-150 pointer-coarse:h-11",
+                  kind === k.kind
+                    ? "bg-accent-soft text-ink shadow-[0_0_0_1.5px_var(--accent)]"
+                    : "bg-white/70 text-ink-2 shadow-[0_0_0_0.5px_rgba(15,23,42,0.14)] hover:bg-white hover:text-ink",
                 )}
               >
                 {k.label}
@@ -330,7 +329,7 @@ function StepForm({ step, onBack, onDone }: { step: NonNullable<Step>; onBack: (
           </p>
         ) : null}
       </div>
-      <div className="flex justify-end gap-2 border-t border-line px-4 py-3">
+      <div className="flex justify-end gap-2 border-t border-ink/[0.06] px-4 py-3">
         <Button variant="quiet" onClick={onDone}>
           Cancel
         </Button>

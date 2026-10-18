@@ -2,10 +2,13 @@
 const nextConfig = {
   basePath: '/intervous',
   async redirects() {
-    // basePath is applied automatically: these match /intervous and /intervous/dashboard.
+    // basePath is applied automatically: these match /intervous, /intervous/today, ...
+    // Home replaced Today and Insights; the old addresses keep working.
     return [
-      { source: '/', destination: '/today', permanent: false },
-      { source: '/dashboard', destination: '/today', permanent: false },
+      { source: '/', destination: '/home', permanent: false },
+      { source: '/dashboard', destination: '/home', permanent: false },
+      { source: '/today', destination: '/home', permanent: false },
+      { source: '/insights', destination: '/home', permanent: false },
     ];
   },
 };

@@ -6,13 +6,12 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type ClipboardEvent, type ReactNode } from "react";
 import { appPath, normalizeUrl } from "../../../lib/core";
 import { apiJson } from "../../../lib/api";
-import { FIXTURE_MODE, useApplications, type Application } from "../../../lib/data";
+import { FIXTURE_MODE, useApplications, useToday, type Application } from "../../../lib/data";
 import { supabase } from "../../../lib/supbaseClient";
 import type { KeysStatus } from "../../../lib/keyService";
 import { Button, ButtonLink, Callout, DateInput, Field, Input, SegmentedControl, Sheet, Textarea, cx, useToast } from "@/ui";
 import { OPEN_NEW_APPLICATION } from "@/ui/events";
 import { keysStatus as loadKeysStatus } from "@/app/(app)/companies/_lib/companies";
-import { useToday } from "@/features/palette/useToday";
 import { createApplication } from "./create";
 import { prefillOf, type NewApplicationMode, type NewApplicationPrefill } from "./events";
 import { SCRAPE_MODEL_CHANGED, effectiveScrapeModel, scrapeModelInfo, type ScrapeModel } from "./model";
@@ -34,10 +33,11 @@ const empty = (today: string): Draft => ({ company: "", role: "", location: "", 
 type Scraped = { fullJobEntry: { company_name?: string; role?: string; location?: string; url?: string } };
 
 /**
- * The New-application sheet (spec 2.9), opened by `n`, the palette, or any page through
- * OPEN_NEW_APPLICATION (optionally with a prefill: see ./events). Three modes:
- * From link (reads the posting with the AI model chosen in Settings, then lets you check it),
- * Paste JD (keeps the text as the posting snapshot), Manual.
+ * The "Add a job" sheet, opened by `n`, the palette, or any page through OPEN_NEW_APPLICATION
+ * (optionally with a prefill: see ./events). Three ways:
+ * From link (reads the job post with the AI model chosen in Settings, then lets you check it),
+ * Paste (keeps the pasted text as the saved job description), Manual.
+ * Saving opens the new application's page, where "What happened?" takes it from there.
  */
 export function NewApplicationSheet() {
   const router = useRouter();
@@ -121,7 +121,7 @@ export function NewApplicationSheet() {
     }
     setReading(true);
     try {
-      if (FIXTURE_MODE) throw new Error("Reading a posting calls the AI model with your key, so it is off in fixture mode. Use Manual or Paste JD.");
+      if (FIXTURE_MODE) throw new Error("Reading a job post calls the AI model with your key, so it is off in preview mode. Use Paste or Manual.");
       const { data } = await supabase.auth.getSession();
       if (!data.session) throw new Error("You are signed out. Sign in again, then try the link.");
       const res = await apiJson<Scraped>("scrape-job", {
@@ -139,7 +139,7 @@ export function NewApplicationSheet() {
       }));
       setLinkStep("review");
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "The posting could not be read.";
+      const msg = e instanceof Error ? e.message : "The job post could not be read.";
       setError(
         /key/i.test(msg) ? (
           <>
@@ -181,10 +181,11 @@ export function NewApplicationSheet() {
         (apps.data ?? []).map((a) => a.slug).filter((s): s is string => !!s),
       );
       setOpen(false);
-      const path = appPath({ id: created.id, slug: created.slug });
+      router.push(appPath({ id: created.id, slug: created.slug }));
       show({
-        text: `Added ${created.company} · ${created.role}${d.sent ? ", sent" : ", not sent yet"}`,
-        action: { label: "Open", run: () => router.push(path) },
+        text: d.sent
+          ? `Added ${created.company} · ${created.role}.`
+          : `Added ${created.company} · ${created.role}. Tap “Sent it” once you send it.`,
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : "The application was not saved. Try again.");
@@ -216,7 +217,7 @@ export function NewApplicationSheet() {
           Cancel
         </Button>
         <Button type="submit" form="new-app-form" variant="primary" icon={Sparkles} loading={reading} disabled={!d.url.trim()}>
-          {reading ? "Reading the posting…" : "Read the posting"}
+          {reading ? "Reading the job post…" : "Read the job post"}
         </Button>
       </>
     ) : (
@@ -231,22 +232,35 @@ export function NewApplicationSheet() {
           </Button>
         )}
         <Button type="submit" form="new-app-form" variant="primary" loading={saving}>
-          Add application
+          Add job
         </Button>
       </>
     );
 
   return (
-    <Sheet open={open} onClose={() => setOpen(false)} title="New application" width="md" footer={footer}>
+    <Sheet
+      open={open}
+      onClose={() => setOpen(false)}
+      title="Add a job"
+      description={
+        mode === "link"
+          ? "Paste the link to the job post. InterVous reads it and fills in the details for you to check."
+          : mode === "paste"
+            ? "Paste the whole job description. It is saved with the application, so you can read it later."
+            : "Type the company and the role. You can add the rest later."
+      }
+      width="md"
+      footer={footer}
+    >
       <SegmentedControl<NewApplicationMode>
         aria-label="How to add it"
         value={mode}
         onChange={changeMode}
         className="w-full [&>button]:flex-1"
         options={[
-          { value: "link", label: <ModeLabel icon={<Link2 aria-hidden size={15} />}>From link</ModeLabel> },
-          { value: "paste", label: <ModeLabel icon={<ClipboardPaste aria-hidden size={15} />}>Paste JD</ModeLabel> },
-          { value: "manual", label: <ModeLabel icon={<PenLine aria-hidden size={15} />}>Manual</ModeLabel> },
+          { value: "link", label: <ModeLabel icon={<Link2 aria-hidden size={16} />}>From link</ModeLabel> },
+          { value: "paste", label: <ModeLabel icon={<ClipboardPaste aria-hidden size={16} />}>Paste</ModeLabel> },
+          { value: "manual", label: <ModeLabel icon={<PenLine aria-hidden size={16} />}>Manual</ModeLabel> },
         ]}
       />
 
@@ -261,7 +275,7 @@ export function NewApplicationSheet() {
       >
         {mode === "link" && linkStep === "link" ? (
           <>
-            <Field label="Link to the posting" hint={`Read by ${info.label}. The AI model is chosen in Settings.`}>
+            <Field label="Link to the job post" hint={`Read by ${info.label}. You can change the AI model in Settings.`}>
               <Input
                 type="url"
                 inputMode="url"
@@ -271,6 +285,7 @@ export function NewApplicationSheet() {
                 autoFocus
                 data-autofocus
                 autoComplete="off"
+                className="h-11 text-[16px]"
               />
             </Field>
             {modelKeyMissing ? (
@@ -279,15 +294,15 @@ export function NewApplicationSheet() {
                 <Link href="/settings#api-keys" onClick={() => setOpen(false)} className="underline underline-offset-4">
                   Add it in Settings
                 </Link>
-                , or use Paste JD.
+                , or use Paste.
               </Callout>
             ) : null}
-            <p className="text-small text-ink-2">You check what it found before anything is saved.</p>
+            <p className="text-[15px] text-ink-2">You check what it found before anything is saved.</p>
           </>
         ) : null}
 
         {mode === "paste" ? (
-          <Field label="Job description" hint={d.jd ? `${d.jd.length.toLocaleString("en")} characters. Kept as the posting snapshot.` : "Paste the whole posting. Headings and lists are kept."}>
+          <Field label="Job description" hint={d.jd ? `${d.jd.length.toLocaleString("en")} characters.` : "Paste the whole job post. Headings and lists are kept."}>
             <Textarea
               value={d.jd}
               onChange={(e) => set("jd", e.target.value)}
@@ -296,7 +311,7 @@ export function NewApplicationSheet() {
               autoFocus
               data-autofocus
               placeholder="Paste the job description"
-              className="font-serif text-body leading-7"
+              className="text-[16px] leading-7"
             />
           </Field>
         ) : null}
@@ -304,40 +319,40 @@ export function NewApplicationSheet() {
         {reviewing ? (
           <>
             {mode === "link" ? (
-              <Callout tone="info" title="Check what was read">
+              <Callout tone="info" title="Check what was read, then add it">
                 <span className="break-all">{d.url}</span>
               </Callout>
             ) : null}
             <div className="grid gap-4 sm:grid-cols-2">
               <Field
                 label="Company"
-                hint={d.company.trim() ? (knownCompany ? (knownCompany === d.company.trim() ? "Already in your companies." : `Matches ${knownCompany} in your companies.`) : "A new company is added too.") : undefined}
+                hint={d.company.trim() ? (knownCompany ? (knownCompany === d.company.trim() ? "Already in your companies." : `Matches ${knownCompany} in your companies.`) : "It is added to your companies too.") : undefined}
               >
-                <Input value={d.company} onChange={(e) => set("company", e.target.value)} autoComplete="off" data-autofocus={(mode === "manual" && !focusRole) || undefined} required />
+                <Input value={d.company} onChange={(e) => set("company", e.target.value)} autoComplete="off" data-autofocus={(mode === "manual" && !focusRole) || undefined} required className="h-11 text-[16px]" />
               </Field>
               <Field label="Role">
-                <Input value={d.role} onChange={(e) => set("role", e.target.value)} autoComplete="off" data-autofocus={(mode === "manual" && focusRole) || undefined} required />
+                <Input value={d.role} onChange={(e) => set("role", e.target.value)} autoComplete="off" data-autofocus={(mode === "manual" && focusRole) || undefined} required className="h-11 text-[16px]" />
               </Field>
               <Field label="Location">
-                <Input value={d.location} onChange={(e) => set("location", e.target.value)} placeholder="City, country" autoComplete="off" />
+                <Input value={d.location} onChange={(e) => set("location", e.target.value)} placeholder="City, country" autoComplete="off" className="h-11 text-[16px]" />
               </Field>
               {mode !== "link" ? (
-                <Field label="Link" hint="Optional">
-                  <Input type="url" inputMode="url" value={d.url} onChange={(e) => set("url", e.target.value)} placeholder="https://" autoComplete="off" />
+                <Field label="Link to the job post" hint="Optional">
+                  <Input type="url" inputMode="url" value={d.url} onChange={(e) => set("url", e.target.value)} placeholder="https://" autoComplete="off" className="h-11 text-[16px]" />
                 </Field>
               ) : null}
             </div>
 
             <fieldset className="flex flex-col gap-3">
-              <legend className="mb-1.5 text-small font-medium text-ink">Status</legend>
+              <legend className="mb-1.5 text-[15px] font-medium text-ink">Did you send it already?</legend>
               <SegmentedControl<"no" | "yes">
-                aria-label="Status"
+                aria-label="Did you send it already?"
                 className="self-start"
                 value={d.sent ? "yes" : "no"}
                 onChange={(v) => set("sent", v === "yes")}
                 options={[
-                  { value: "no", label: "Not sent yet" },
-                  { value: "yes", label: "Already sent" },
+                  { value: "no", label: "Not yet" },
+                  { value: "yes", label: "Yes, I sent it" },
                 ]}
               />
               {d.sent ? (
@@ -352,19 +367,19 @@ export function NewApplicationSheet() {
         {duplicate ? (
           <Callout
             tone="caution"
-            title="You already track this link"
+            title="You already have this job"
             action={
               <ButtonLink size="sm" href={appPath({ id: Number(duplicate.id), slug: duplicate.slug })} onClick={() => setOpen(false)}>
                 Open {duplicate.company_name}
               </ButtonLink>
             }
           >
-            {duplicate.company_name} · {duplicate.role}. Adding it again makes a second application.
+            {duplicate.company_name} · {duplicate.role}. Adding it again makes a second copy.
           </Callout>
         ) : null}
 
         {error ? (
-          <p role="alert" className={cx("rounded-sm bg-danger-soft px-3 py-2 text-small text-danger")}>
+          <p role="alert" className={cx("rounded-[12px] bg-danger-soft px-3 py-2 text-[15px] text-danger")}>
             {error}
           </p>
         ) : null}

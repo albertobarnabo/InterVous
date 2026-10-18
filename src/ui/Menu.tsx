@@ -33,8 +33,8 @@ export type MenuProps = {
 };
 
 const itemClass =
-  "group flex w-full cursor-default items-center gap-2.5 rounded-sm px-2.5 py-2 text-left text-small select-none " +
-  "data-focus:bg-surface-2 data-disabled:opacity-50 pointer-coarse:min-h-11";
+  "group flex w-full cursor-pointer items-center gap-2.5 rounded-[10px] px-3 py-2.5 text-left text-body select-none sm:text-[15px] " +
+  "data-focus:bg-ink/[0.06] data-disabled:cursor-not-allowed data-disabled:opacity-50 pointer-coarse:min-h-11";
 
 /** Headless UI Menu. Defaults to a "⋯" icon trigger. */
 export function Menu({ items, label = "More actions", trigger, anchor = "bottom end", className }: MenuProps) {
@@ -47,13 +47,13 @@ export function Menu({ items, label = "More actions", trigger, anchor = "bottom 
         transition
         modal={false}
         className={cx(
-          "z-30 min-w-48 rounded-md bg-surface p-1 shadow-2 ring-1 ring-line focus:outline-none",
+          "iv-glass-thick z-30 min-w-52 rounded-[16px] p-1.5 shadow-[0_0_0_0.5px_rgba(15,23,42,0.1),0_1px_0_rgba(255,255,255,0.9)_inset,0_16px_40px_rgba(15,23,42,0.16)] focus:outline-none",
           "origin-top transition duration-[120ms] ease-out data-closed:scale-[0.98] data-closed:opacity-0 motion-reduce:data-closed:scale-100",
           className,
         )}
       >
         {items.map((it, i) => {
-          if (it === "separator") return <MenuSeparator key={`sep-${i}`} className="my-1 h-px bg-line" />;
+          if (it === "separator") return <MenuSeparator key={`sep-${i}`} className="mx-2 my-1 h-px bg-ink/[0.08]" />;
           const Icon = it.icon;
           const content = (
             <>
@@ -64,7 +64,7 @@ export function Menu({ items, label = "More actions", trigger, anchor = "bottom 
                 <span aria-hidden className="size-4 shrink-0" />
               ) : null}
               <span className="flex-1">{it.label}</span>
-              {it.hint ? <span className="font-mono text-caption text-ink-3">{it.hint}</span> : null}
+              {it.hint ? <span className="text-caption text-ink-3">{it.hint}</span> : null}
             </>
           );
           return (

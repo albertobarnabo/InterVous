@@ -1,9 +1,11 @@
 "use client";
 
-import { Copy, Inbox, Mail, Plus, Send, Trash2 } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { CalendarCheck, Copy, Inbox, Mail, Plus, Send, Trash2 } from "lucide-react";
+import { useState, type ReactNode } from "react";
 import {
+  ActionCard,
   AgeBar,
+  Avatar,
   Button,
   ButtonLink,
   Callout,
@@ -16,10 +18,13 @@ import {
   DotStrip,
   EmptyState,
   Field,
+  GlassCard,
   IconButton,
   Input,
   Kbd,
+  Logo,
   Menu,
+  PageHeader,
   PhaseDot,
   PhasePill,
   Popover,
@@ -29,25 +34,27 @@ import {
   Sheet,
   Skeleton,
   SkeletonRow,
+  StatTile,
+  StatusPill,
+  Steps,
   TabPanel,
   Tabs,
   Tag,
   Textarea,
   Tooltip,
   WeekBars,
+  phaseVars,
   useToast,
   type DotItem,
 } from "@/ui";
 import { PHASES, type Phase } from "../../../../lib/types";
 
-type Theme = "system" | "light" | "dark";
-
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="flex flex-col gap-4 border-t border-line pt-6">
+    <GlassCard as="section" padding="md" className="flex flex-col gap-4">
       <h2 className="text-h3 text-ink">{title}</h2>
       {children}
-    </section>
+    </GlassCard>
   );
 }
 
@@ -63,8 +70,8 @@ const DOTS: DotItem[] = [
   { state: "yes", label: "Apple" },
   { state: "no", label: "OpenAI Codex" },
   { state: "no", label: "G-Research" },
-  { state: "unconfirmed", label: "Anthropic" },
-  { state: "unconfirmed", label: "Cohere" },
+  { state: "waiting", label: "Anthropic" },
+  { state: "recent", label: "Cohere" },
   { state: "no", label: "LangChain" },
   { state: "recent", label: "Meta" },
   { state: "waiting", label: "ECB 14417" },
@@ -81,7 +88,7 @@ const WEEKS = Array.from({ length: 12 }, (_, i) => {
 function Column() {
   const toast = useToast();
   const [tab, setTab] = useState("overview");
-  const [view, setView] = useState<"list" | "board">("list");
+  const [view, setView] = useState<string>("all");
   const [model, setModel] = useState<string>("mistral");
   const [company, setCompany] = useState<(typeof COMPANIES)[number] | null>(COMPANIES[1]);
   const [dialog, setDialog] = useState(false);
@@ -90,17 +97,17 @@ function Column() {
   const [chip, setChip] = useState(true);
 
   return (
-    <div className="flex flex-col gap-8">
+    <>
       <Section title="Type">
         <div className="flex flex-col gap-2">
-          <p className="text-caption text-ink-3">caption 13/18 · Round 1 invite 3 Sep</p>
-          <p className="text-small text-ink-2">small 14/20 · rows and controls</p>
-          <p className="text-body">body 16/24 · the default</p>
-          <p className="iv-reading">reading 18/30 serif · You will work with customers to ship production LLM systems, at most 68 characters wide.</p>
-          <p className="text-h3">h3 20/28 · Section title</p>
-          <p className="text-h2">h2 26/32 · Do applications get answers?</p>
-          <h1 className="font-serif text-h1-sm sm:text-h1">h1 serif · Applied AI Architect</h1>
-          <p className="iv-num text-figure">1 of 6</p>
+          <p className="text-caption text-ink-2">caption 13 · labels only, never smaller</p>
+          <p className="text-small text-ink-2">small 14 · secondary text</p>
+          <p className="text-body">body 16 / 1.55 · the default</p>
+          <p className="iv-reading">reading 17 / 1.65 · You will work with customers to ship production LLM systems, at most 70 characters wide.</p>
+          <p className="text-h3">h3 20 · Section title</p>
+          <p className="text-h2">h2 26 · Do this now</p>
+          <h1 className="text-h1-sm sm:text-h1">h1 34 · Applied AI Architect</h1>
+          <p className="iv-num text-figure">10</p>
         </div>
       </Section>
 
@@ -108,11 +115,51 @@ function Column() {
         <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
           {["bg", "surface", "surface-2", "line", "line-strong", "ink", "ink-2", "ink-3", "accent", "accent-soft", "danger", "caution-bg"].map((t) => (
             <div key={t} className="flex flex-col gap-1">
-              <span className="h-10 rounded-sm shadow-1" style={{ background: `var(--${t})` }} />
+              <span className="h-10 rounded-[10px] shadow-1" style={{ background: `var(--${t})` }} />
               <span className="iv-num text-caption font-normal text-ink-2">--{t}</span>
             </div>
           ))}
         </div>
+      </Section>
+
+      <Section title="Glass cards, stat tiles, action cards">
+        <PageHeader
+          className="pt-0 sm:pt-0"
+          title="Good morning, Alberto"
+          description="10 applications are waiting for a reply and 1 is at interview stage."
+          actions={<Button variant="primary" icon={Plus}>Add a job</Button>}
+        />
+        <div className="flex flex-col gap-3">
+          <ActionCard
+            company={{ name: "Apple" }}
+            text="Tell us how your Apple interview went"
+            detail="Interview on 12 Oct"
+            action={{ label: "Update", onClick: () => toast.show({ kind: "info", text: "Update" }) }}
+          />
+          <ActionCard
+            icon={CalendarCheck}
+            text="Did you send the 5 CVs made in October? Confirm them so replies can be tracked"
+            action={{ label: "Confirm", onClick: () => toast.show({ kind: "info", text: "Confirm" }) }}
+          />
+          <ActionCard
+            company={{ name: "European Central Bank" }}
+            text="European Central Bank hasn't replied in 16 days. A short follow-up can help."
+            action={{ label: "Copy follow-up", icon: Copy, variant: "secondary", onClick: () => toast.show({ text: "Copied" }) }}
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <StatTile value={10} label="Waiting for a reply" href="/dev/ui" color={phaseVars("applied").fg} />
+          <StatTile value={1} label="Interviews" href="/dev/ui" color={phaseVars("interviewing").fg} />
+          <StatTile value={5} label="Not sent yet" href="/dev/ui" color={phaseVars("draft").fg} />
+          <StatTile value={7} label="Closed" href="/dev/ui" color={phaseVars("no_reply").fg} />
+        </div>
+        <GlassCard material="solid" padding="md">
+          <p className="iv-reading">
+            Solid glass for long text. You will design and ship retrieval systems with our applied research team, own evaluation, and work
+            directly with customers in regulated industries.
+          </p>
+        </GlassCard>
+        <Steps items={["Add a job (paste the link)", "Mark it as sent", "Tell InterVous what happened"]} />
       </Section>
 
       <Section title="Buttons">
@@ -226,21 +273,24 @@ function Column() {
           Panel for <span className="font-medium text-ink">{tab}</span>.
         </TabPanel>
         <SegmentedControl
-          aria-label="View"
+          aria-label="Show"
           value={view}
           onChange={setView}
           options={[
-            { value: "list", label: "List" },
-            { value: "board", label: "Board" },
+            { value: "all", label: "All", count: 23 },
+            { value: "waiting", label: "Waiting", count: 10 },
+            { value: "interviews", label: "Interviews", count: 1 },
+            { value: "not_sent", label: "Not sent", count: 5 },
+            { value: "closed", label: "Closed", count: 7 },
           ]}
         />
         <div className="flex flex-wrap gap-2">
-          <Chip selected={chip} onClick={() => setChip((c) => !c)}>Needs visa</Chip>
-          <Chip>Has unconfirmed facts</Chip>
-          <Tag tone="caution">Unconfirmed</Tag>
-          <Tag>Visa</Tag>
-          <Tag tone="accent">Exact file you sent</Tag>
-          <Tag tone="danger">Posting is gone</Tag>
+          <Chip selected={chip} onClick={() => setChip((c) => !c)}>Fintech</Chip>
+          <Chip>Remote</Chip>
+          <Tag tone="caution">Check this</Tag>
+          <Tag>Tag</Tag>
+          <Tag tone="accent">The CV you sent</Tag>
+          <Tag tone="danger">Job post is gone</Tag>
         </div>
       </Section>
 
@@ -290,7 +340,7 @@ function Column() {
           onClose={() => setConfirm(false)}
           onConfirm={() => setConfirm(false)}
           title="Delete this application?"
-          body="Its events, documents, answers and fit items go with it. This cannot be undone."
+          body="Its history, CV and answers go with it. This cannot be undone."
           typeToConfirm="Apple"
         />
         <EmptyState icon={Inbox} title="Nothing needs you." body="Last sent 6 days ago." action={<Button size="sm">Open applications</Button>} />
@@ -304,10 +354,15 @@ function Column() {
         </div>
       </Section>
 
-      <Section title="Phases">
+      <Section title="Status">
         <div className="flex flex-wrap gap-2">
           {PHASES.map((p) => (
-            <PhasePill key={p} phase={p as Phase} />
+            <StatusPill key={p} status={p as Phase} />
+          ))}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {PHASES.map((p) => (
+            <PhasePill key={p} phase={p as Phase} size="sm" />
           ))}
         </div>
         <div className="flex items-center gap-3">
@@ -320,13 +375,17 @@ function Column() {
         </div>
       </Section>
 
-      <Section title="Company marks">
-        <div className="flex items-center gap-3">
-          <CompanyMark name="European Central Bank" size={32} />
-          <CompanyMark name="G-Research" size={32} />
-          <CompanyMark name="Anthropic" size={48} />
-          <CompanyMark name="Globe Inc" logoUrl="/intervous/globe.svg" size={32} />
-          <CompanyMark name="Broken logo" logoUrl="/intervous/missing.png" size={48} />
+      <Section title="Logos and avatars">
+        <div className="flex flex-wrap items-center gap-3">
+          <Logo name="European Central Bank" size={40} />
+          <Logo name="G-Research" size={40} />
+          <Logo name="Apple" size={40} />
+          <Logo name="Mistral AI" size={40} />
+          <CompanyMark name="Anthropic" size={56} />
+          <CompanyMark name="Globe Inc" logoUrl="/intervous/globe.svg" size={40} />
+          <CompanyMark name="Broken logo" logoUrl="/intervous/missing.png" size={56} />
+          <Avatar label="alberto@example.com" size={32} />
+          <Avatar label="Zoe" size={40} />
         </div>
       </Section>
 
@@ -346,46 +405,22 @@ function Column() {
         <RangeBar low={0.12} high={0.31} point={0.2} />
         <WeekBars weeks={WEEKS} />
       </Section>
-    </div>
+    </>
   );
 }
 
+/** /intervous/dev/ui: every primitive on the glass backdrop (light only). */
 export default function Gallery() {
-  const [theme, setTheme] = useState<Theme>("system");
-  useEffect(() => {
-    const el = document.documentElement;
-    if (theme === "system") el.removeAttribute("data-theme");
-    else el.setAttribute("data-theme", theme);
-    return () => el.removeAttribute("data-theme");
-  }, [theme]);
-
   return (
-    <div className="min-h-dvh">
-      <header className="sticky top-0 z-20 border-b border-line bg-bg">
-        <div className="iv-page flex h-14 items-center justify-between gap-3">
+    <div className="min-h-dvh pb-16">
+      <header className="sticky top-0 z-20 px-2 pt-2 sm:px-3 sm:pt-3">
+        <div className="iv-glass mx-auto flex h-14 max-w-[calc(var(--content-max)+40px)] items-center justify-between gap-3 rounded-[22px] px-4">
           <p className="text-body font-semibold">Primitives</p>
-          <SegmentedControl
-            aria-label="Page theme"
-            size="sm"
-            value={theme}
-            onChange={setTheme}
-            options={[
-              { value: "system", label: "System" },
-              { value: "light", label: "Light" },
-              { value: "dark", label: "Dark" },
-            ]}
-          />
+          <p className="text-small text-ink-2">Light only · glass</p>
         </div>
       </header>
-      <div className="mx-auto grid w-full max-w-[1400px] grid-cols-1 lg:grid-cols-2">
-        <div data-theme="light" className="bg-bg px-4 py-8 text-ink lg:px-8">
-          <p className="mb-6 text-caption text-ink-3">Light</p>
-          <Column />
-        </div>
-        <div data-theme="dark" className="bg-bg px-4 py-8 text-ink lg:px-8">
-          <p className="mb-6 text-caption text-ink-3">Dark</p>
-          <Column />
-        </div>
+      <div className="iv-page grid grid-cols-1 items-start gap-6 pt-6 lg:grid-cols-2">
+        <Column />
       </div>
     </div>
   );

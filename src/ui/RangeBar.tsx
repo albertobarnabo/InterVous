@@ -22,14 +22,14 @@ export function RangeBar({ low, high, point, className, showLabels = true }: Ran
       <div
         role="img"
         aria-label={`Likely between ${pct(lo)} and ${pct(hi)}, best estimate ${pct(pt)}`}
-        className="relative h-3 w-full rounded-full bg-surface-2"
+        className="relative h-3 w-full rounded-full bg-ink/[0.08]"
       >
         <span
           className="absolute inset-y-0 rounded-full border border-accent bg-accent-soft"
           style={{ left: `${lo * 100}%`, width: `max(${(hi - lo) * 100}%, 4px)` }}
         />
         <span
-          className="absolute top-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-surface bg-accent"
+          className="absolute top-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-accent"
           style={{ left: `${pt * 100}%` }}
         />
       </div>

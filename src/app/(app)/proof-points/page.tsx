@@ -1,8 +1,6 @@
-import type { Metadata } from "next";
-import ProofPointsView from "./_components/ProofPointsView";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = { title: "Proof points · InterVous" };
-
+// Proof points are no longer a page of their own: old links land on Home.
 export default function ProofPointsPage() {
-  return <ProofPointsView />;
+  redirect("/home");
 }

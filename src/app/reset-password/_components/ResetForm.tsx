@@ -52,7 +52,7 @@ export default function ResetForm() {
     try {
       const { error: err } = await supabase.auth.updateUser({ password });
       if (err) throw err;
-      router.replace("/today");
+      router.replace("/home");
     } catch (err) {
       setError(authMessage(err, "The password was not changed. Try again."));
       setBusy(false);
@@ -63,9 +63,9 @@ export default function ResetForm() {
     return (
       <AuthCard title="Set a new password">
         <div aria-busy="true" aria-label="Checking the link" className="flex flex-col gap-4">
-          <Skeleton className="h-11 rounded-sm" />
-          <Skeleton className="h-11 rounded-sm" />
-          <Skeleton className="h-11 rounded-sm" />
+          <Skeleton className="h-12 rounded-[12px]" />
+          <Skeleton className="h-12 rounded-[12px]" />
+          <Skeleton className="h-12 rounded-full" />
         </div>
       </AuthCard>
     );
@@ -77,12 +77,12 @@ export default function ResetForm() {
         title="This link has expired"
         lead="Reset links work once and for a short time. Ask for a new one."
         footer={
-          <Link href="/login" className="text-accent underline-offset-4 hover:underline">
+          <Link href="/login" className="font-medium text-accent underline-offset-4 hover:underline">
             Back to sign in
           </Link>
         }
       >
-        <ButtonLink href="/login?mode=forgot" variant="primary" className="h-11 w-full">
+        <ButtonLink href="/login?mode=forgot" variant="primary" size="lg" className="w-full">
           Send a new link
         </ButtonLink>
       </AuthCard>
@@ -91,7 +91,7 @@ export default function ResetForm() {
 
   return (
     <AuthCard title="Set a new password" lead={`At least ${MIN} characters.`}>
-      <form onSubmit={submit} className="flex flex-col gap-4">
+      <form onSubmit={submit} className="flex flex-col gap-5">
         <div className="flex flex-col gap-1.5">
           <label htmlFor="new-password" className="text-small font-medium text-ink">
             New password
@@ -121,17 +121,17 @@ export default function ResetForm() {
             aria-describedby={mismatch ? "confirm-hint" : undefined}
           />
           {mismatch ? (
-            <p id="confirm-hint" className="text-caption text-danger">
+            <p id="confirm-hint" className="text-small text-danger">
               Not the same yet.
             </p>
           ) : null}
         </div>
         {error ? (
-          <p role="alert" className="rounded-sm bg-danger-soft px-3 py-2 text-small text-danger">
+          <p role="alert" className="rounded-[14px] bg-danger-soft px-4 py-3 text-small text-danger">
             {error}
           </p>
         ) : null}
-        <Button type="submit" variant="primary" loading={busy} disabled={!password || !confirm} className="h-11 w-full">
+        <Button type="submit" variant="primary" size="lg" loading={busy} disabled={!password || !confirm} className="mt-1 w-full">
           Save the new password
         </Button>
       </form>

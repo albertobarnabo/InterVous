@@ -1,67 +1,98 @@
-// View model for /applications (docs/SPEC.md 2.2). All phase, window and sentence logic comes
-// from lib/core; this file only shapes rows for the list and the board, sorts and filters them.
+// View model for /applications: one readable row per application. Status groups, labels and
+// day counts come from lib/core (STATUS_GROUPS, buildContext); this file only shapes, sorts and
+// filters the rows.
 import {
-  BOARD_COLUMNS,
-  LIST_GROUPS,
+  STATUS_GROUPS,
   appPath,
   appRef,
-  boardColumnOf,
   buildContext,
+  daysBetween,
+  formatDay,
   formatShort,
-  listGroupOf,
-  nowSentence,
   phaseChangedOn,
-  roleFamilyLabel,
-  waitingDays,
-  type BoardColumnId,
+  phaseGroup,
+  toDateOnly,
   type Derived,
   type JobEvent as CoreEvent,
   type JobOverviewRow,
-  type ListGroupId,
   type Phase,
+  type StatusGroupId,
   type UserSettings as CoreSettings,
 } from "../../../lib/core";
 import type { Application, UserSettings } from "../../../lib/data";
 
-export type { BoardColumnId, ListGroupId, Phase };
+export type { Phase, StatusGroupId };
 
-/** Plain words for the fields an import could not confirm. */
-const UNCERTAIN_WORDS: Record<string, string> = {
-  phase: "its status",
-  applied_on: "the date it was sent",
-  cv_built_on: "the date the CV was built",
-};
+/** The one button of a row. */
+export type RowAction = "mark_sent" | "update" | "open";
 
 export type AppItem = {
   id: number;
   ref: string;
-  /** App-relative dossier path ('/applications/<slug>'). */
+  /** App-relative application page path ('/applications/<slug>'). */
   href: string;
   app: Application;
   d: Derived;
   phase: Phase;
-  group: ListGroupId;
-  column: BoardColumnId;
+  group: StatusGroupId;
   company: string;
   role: string;
   location: string | null;
   logoUrl: string | null;
-  /** The deterministic now sentence from lib/core/now.mjs. */
-  now: string;
-  /** Days waiting (applied/screening only), for the age bar. */
-  waiting: number | null;
-  /** The row's date: sent date for sent rows, CV date for drafts. */
-  date: { on: string | null; text: string; label: string };
-  /** Plain-language list of unconfirmed facts; empty when everything is confirmed. */
-  unconfirmed: string[];
-  visa: boolean;
-  family: string | null;
-  inWindow: boolean;
-  /** Sort key used inside a group or column (bigger first unless noted by the comparator). */
-  activityOn: string | null;
-  closedOn: string | null;
+  /** A short plain fact next to the status: "Waiting 17 days", "Interview tomorrow", "CV made 11 Oct". */
+  detail: string | null;
+  action: RowAction;
+  /** Sort key inside the group (bigger first). */
+  sortOn: string | number | null;
   haystack: string;
 };
+
+const days = (n: number) => `${n} ${n === 1 ? "day" : "days"}`;
+
+function detailFor(d: Derived, today: string): string | null {
+  const fmt = (x: string | null) => formatShort(x, { today });
+  switch (d.phase) {
+    case "applied":
+    case "screening":
+      return d.silenceDays !== null && d.silenceDays > 0 ? `Waiting ${days(d.silenceDays)}` : d.appliedOn ? `Sent ${fmt(d.appliedOn)}` : null;
+    case "interviewing": {
+      if (!d.nextInterviewOn) return null;
+      const ahead = daysBetween(today, d.nextInterviewOn) ?? 0;
+      return ahead === 0 ? "Interview today" : ahead === 1 ? "Interview tomorrow" : `Interview ${formatDay(d.nextInterviewOn)}`;
+    }
+    case "draft": {
+      if (d.app.posting_live === false) return "Job post is gone";
+      const closes = toDateOnly(d.app.closes_on);
+      if (closes && closes >= today) {
+        const ahead = daysBetween(today, closes) ?? 0;
+        if (ahead <= 14) return ahead === 0 ? "Closes today" : `Closes in ${days(ahead)}`;
+      }
+      return d.cvBuiltOn ? `CV made ${fmt(d.cvBuiltOn)}` : null;
+    }
+    default:
+      return null;
+  }
+}
+
+function actionFor(phase: Phase): RowAction {
+  if (phase === "draft") return "mark_sent";
+  if (phase === "applied" || phase === "screening" || phase === "interviewing") return "update";
+  return "open";
+}
+
+function sortKey(d: Derived, group: StatusGroupId): string | number | null {
+  switch (group) {
+    case "interviews":
+      return d.nextInterviewOn ?? d.lastEventOn ?? d.appliedOn;
+    case "waiting":
+      // Longest wait first; undated rows last.
+      return d.silenceDays;
+    case "not_sent":
+      return d.cvBuiltOn ?? d.windowDate;
+    case "closed":
+      return phaseChangedOn(d.phase, d.events) ?? d.lastEventOn ?? d.appliedOn ?? d.windowDate;
+  }
+}
 
 export function buildItems(apps: Application[], settings: UserSettings | undefined, today: string): AppItem[] {
   const events = apps.flatMap((a) => a.events) as unknown as CoreEvent[];
@@ -71,188 +102,67 @@ export function buildItems(apps: Application[], settings: UserSettings | undefin
     settings: (settings ?? null) as Partial<CoreSettings> | null,
     today,
   });
-  const nowCtx = { today, settings: ctx.settings };
   return ctx.all.map((d, i) => {
     const app = apps[i];
     const company = d.company || "Unknown company";
     const role = d.role || "Untitled role";
-    const draftLike = d.phase === "draft" || d.phase === "skipped";
-    const dateOn = draftLike ? d.cvBuiltOn : d.appliedOn;
-    const dateText = dateOn ? formatShort(dateOn, { today }) : "";
-    const dateLabel = draftLike
-      ? dateOn
-        ? `CV built ${dateText}`
-        : "CV date unknown"
-      : dateOn
-        ? `Sent ${dateText}`
-        : "Sent, date unknown";
-    const closedOn = phaseChangedOn(d.phase, d.events) ?? d.lastEventOn ?? d.appliedOn ?? d.windowDate;
     const location = app.location?.trim() || null;
+    const group = phaseGroup(d.phase) as StatusGroupId;
     return {
       id: d.id,
       ref: appRef({ id: d.id, slug: d.slug }),
       href: appPath({ id: d.id, slug: d.slug }),
       app,
       d,
-      phase: d.phase,
-      group: listGroupOf(d),
-      column: boardColumnOf(d.phase),
+      phase: d.phase as Phase,
+      group,
       company,
       role,
       location,
       logoUrl: app.company_logo_url,
-      now: nowSentence(d, nowCtx),
-      waiting: waitingDays(d, nowCtx),
-      date: { on: dateOn, text: dateText, label: dateLabel },
-      unconfirmed: d.uncertain.map((f) => UNCERTAIN_WORDS[f] ?? f.replace(/_/g, " ")),
-      visa: app.visa_needed === true,
-      family: app.role_family ?? null,
-      inWindow: d.inWindow,
-      activityOn: d.lastEventOn ?? (app.last_activity_at ? app.last_activity_at.slice(0, 10) : null) ?? d.appliedOn,
-      closedOn,
-      haystack: [company, role, d.slug, location, app.role_family ? roleFamilyLabel(app.role_family) : null]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase(),
+      detail: detailFor(d, today),
+      action: actionFor(d.phase as Phase),
+      sortOn: sortKey(d, group),
+      haystack: [company, role, d.slug, location].filter(Boolean).join(" ").toLowerCase(),
     };
   });
 }
 
-// ── sorting ─────────────────────────────────────────────────────────────────
-
-const desc = (a: string | number | null | undefined, b: string | number | null | undefined) => {
+const desc = (a: string | number | null, b: string | number | null) => {
   if (a == null && b == null) return 0;
   if (a == null) return 1;
   if (b == null) return -1;
   return a < b ? 1 : a > b ? -1 : 0;
 };
 
-/** Reading order inside a group (the sort named in LIST_GROUPS). */
-export function compareIn(group: ListGroupId) {
-  return (a: AppItem, b: AppItem): number => {
-    let r = 0;
-    switch (group) {
-      case "interviews":
-        r = desc(a.activityOn, b.activityOn);
-        break;
-      case "waiting":
-        // Longest wait first; undated rows last.
-        r = desc(a.waiting, b.waiting);
-        break;
-      case "not_sent":
-        r = desc(a.d.cvBuiltOn ?? a.d.windowDate, b.d.cvBuiltOn ?? b.d.windowDate);
-        break;
-      case "closed":
-        r = desc(a.closedOn, b.closedOn);
-        break;
-      case "older":
-        r = desc(a.d.windowDate, b.d.windowDate);
-        break;
-    }
-    return r || b.id - a.id;
-  };
+// ── filter ──────────────────────────────────────────────────────────────────
+
+export type Show = "all" | StatusGroupId;
+
+export const SHOW_VALUES: Show[] = ["all", ...STATUS_GROUPS.map((g) => g.id)];
+
+export function matchesQuery(it: AppItem, q: string): boolean {
+  const s = q.trim().toLowerCase();
+  return !s || s.split(/\s+/).every((w) => it.haystack.includes(w));
 }
 
-const COLUMN_SORT: Record<BoardColumnId, ListGroupId> = {
-  draft: "not_sent",
-  applied: "waiting",
-  screening: "waiting",
-  interviewing: "interviews",
-  offer: "interviews",
-  closed: "closed",
-};
+// ── groups ──────────────────────────────────────────────────────────────────
 
-export function compareInColumn(column: BoardColumnId) {
-  return compareIn(COLUMN_SORT[column]);
-}
+/** Reading order of the groups in "All": what needs you most first. */
+const GROUP_ORDER: StatusGroupId[] = ["interviews", "waiting", "not_sent", "closed"];
 
-// ── filters ─────────────────────────────────────────────────────────────────
-
-export type Filters = {
-  groups: ListGroupId[];
-  family: string | null;
-  visa: boolean;
-  unconfirmed: boolean;
-  q: string;
-};
-
-export const GROUP_IDS = LIST_GROUPS.map((g) => g.id) as ListGroupId[];
-
-export function hasFilters(f: Filters): boolean {
-  return f.groups.length > 0 || !!f.family || f.visa || f.unconfirmed || f.q.trim() !== "";
-}
-
-/** Everything except the phase-group filter (used for the group chip counts). */
-export function matchesExceptGroup(it: AppItem, f: Filters): boolean {
-  if (f.family && it.family !== f.family) return false;
-  if (f.visa && !it.visa) return false;
-  if (f.unconfirmed && it.unconfirmed.length === 0) return false;
-  const q = f.q.trim().toLowerCase();
-  if (q && !q.split(/\s+/).every((w) => it.haystack.includes(w))) return false;
-  return true;
-}
-
-export function matches(it: AppItem, f: Filters): boolean {
-  if (f.groups.length && !f.groups.includes(it.group)) return false;
-  return matchesExceptGroup(it, f);
-}
-
-// ── groups and columns ──────────────────────────────────────────────────────
-
-export type Group = {
-  id: ListGroupId;
-  label: string;
-  note?: string;
-  collapsedByDefault: boolean;
-  items: AppItem[];
-};
+export type Group = { id: StatusGroupId; label: string; items: AppItem[] };
 
 export function toGroups(items: AppItem[]): Group[] {
-  return LIST_GROUPS.map((g) => ({
-    id: g.id,
-    label: g.label,
-    note: g.note,
-    collapsedByDefault: g.collapsed,
-    items: items.filter((it) => it.group === g.id).sort(compareIn(g.id)),
-  }));
+  return GROUP_ORDER.map((id) => {
+    const g = STATUS_GROUPS.find((x) => x.id === id)!;
+    return { id, label: g.label, items: items.filter((it) => it.group === id).sort((a, b) => desc(a.sortOn, b.sortOn) || b.id - a.id) };
+  });
 }
 
-export type Column = {
-  id: BoardColumnId;
-  label: string;
-  phases: Phase[];
-  /** The phase a dropped card moves to; null for Closed (the drop asks which). */
-  dropPhase: Phase | null;
-  collapsedByDefault: boolean;
-  items: AppItem[];
-};
-
-export function toColumns(items: AppItem[]): Column[] {
-  return BOARD_COLUMNS.map((c) => ({
-    id: c.id,
-    label: c.label,
-    phases: [...c.phases],
-    dropPhase: c.dropPhase,
-    collapsedByDefault: c.collapsed,
-    items: items.filter((it) => it.column === c.id).sort(compareInColumn(c.id)),
-  }));
+/** Rows per filter value, for the segmented control. */
+export function showCounts(items: AppItem[]): Record<Show, number> {
+  const out = { all: items.length } as Record<Show, number>;
+  for (const g of STATUS_GROUPS) out[g.id] = items.filter((it) => it.group === g.id).length;
+  return out;
 }
-
-/** "18 tracked · 11 sent · 1 in interviews", counted on rows inside the campaign window. */
-export function sampleLine(items: AppItem[]): string {
-  const inWindow = items.filter((it) => it.inWindow);
-  const sent = inWindow.filter((it) => it.d.sent).length;
-  const interviews = inWindow.filter((it) => it.group === "interviews").length;
-  return `${inWindow.length} tracked · ${sent} sent · ${interviews} in interviews`;
-}
-
-/** Role families present in the data, most common first. */
-export function familyOptions(items: AppItem[]): Array<{ value: string; label: string; count: number }> {
-  const counts = new Map<string, number>();
-  for (const it of items) if (it.family) counts.set(it.family, (counts.get(it.family) ?? 0) + 1);
-  return [...counts.entries()]
-    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-    .map(([value, count]) => ({ value, label: roleFamilyLabel(value), count }));
-}
-
-export { roleFamilyLabel };

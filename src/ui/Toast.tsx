@@ -75,9 +75,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                 animate={reduce ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 }}
                 exit={reduce ? { opacity: 0, transition: { duration: 0.1 } } : { opacity: 0, scale: 0.98, transition: { duration: 0.12 } }}
                 transition={{ duration: reduce ? 0.1 : 0.16, ease: "easeOut" }}
-                className="pointer-events-auto flex w-full max-w-sm items-center gap-3 rounded-md bg-ink py-2.5 pl-3.5 pr-2 text-small text-bg shadow-2"
+                className="iv-glass-thick pointer-events-auto flex w-full max-w-sm items-center gap-3 rounded-[18px] py-2.5 pl-4 pr-2 text-[15px] text-ink shadow-[0_0_0_0.5px_rgba(15,23,42,0.1),0_1px_0_rgba(255,255,255,0.9)_inset,0_16px_40px_rgba(15,23,42,0.18)]"
               >
-                <Icon aria-hidden size={16} className={cx("shrink-0", t.kind === "error" && "text-[var(--danger-soft)]")} />
+                <Icon aria-hidden size={18} strokeWidth={2} className={cx("shrink-0", t.kind === "error" ? "text-danger" : t.kind === "info" ? "text-ink-2" : "text-accent")} />
                 <div className="min-w-0 flex-1">{t.text}</div>
                 {t.action ? (
                   <button
@@ -86,7 +86,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                       dismiss(t.id);
                       await t.action!.run();
                     }}
-                    className="h-8 shrink-0 rounded-sm px-2.5 font-medium text-bg underline-offset-2 hover:underline focus-visible:outline-bg pointer-coarse:min-h-11"
+                    className="h-8 shrink-0 cursor-pointer rounded-full px-3 font-semibold text-accent hover:bg-accent-soft pointer-coarse:min-h-11"
                   >
                     {t.action.label}
                   </button>
@@ -95,7 +95,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                   type="button"
                   aria-label="Dismiss"
                   onClick={() => dismiss(t.id)}
-                  className="flex size-8 shrink-0 items-center justify-center rounded-sm opacity-70 hover:opacity-100 focus-visible:outline-bg pointer-coarse:size-11"
+                  className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-full text-ink-2 hover:bg-ink/[0.06] hover:text-ink pointer-coarse:size-11"
                 >
                   <X aria-hidden size={16} />
                 </button>

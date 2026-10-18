@@ -2,26 +2,29 @@
 
 import { Eye, EyeOff } from "lucide-react";
 import { useState, type ComponentProps, type ReactNode } from "react";
-import { IconButton, cx } from "@/ui";
+import { GlassCard, IconButton, cx } from "@/ui";
 import { controlClass } from "@/ui/Field";
 
-/** The plain card the sign-in and reset pages share: wordmark, one title, one line, the form. */
+/** The glass card the sign-in and reset pages share: logo, one title, one line, the form. */
 export function AuthCard({ title, lead, children, footer }: { title: string; lead?: ReactNode; children: ReactNode; footer?: ReactNode }) {
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center px-4 py-10">
-      <main className="w-full max-w-sm">
-        <div className="mb-6 flex items-center justify-center gap-2">
-          <span aria-hidden className="flex size-8 items-center justify-center rounded-sm bg-accent font-serif text-[16px] font-semibold text-accent-ink">
+      <main className="w-full max-w-[420px]">
+        <div className="mb-8 flex items-center justify-center gap-3">
+          <span
+            aria-hidden
+            className="flex size-11 items-center justify-center rounded-[14px] bg-accent text-[19px] font-semibold tracking-tight text-accent-ink shadow-[inset_0_1px_0_rgba(255,255,255,0.25),0_6px_16px_rgba(26,107,107,0.35)]"
+          >
             iv
           </span>
-          <span className="text-body font-semibold text-ink">InterVous</span>
+          <span className="text-h3 tracking-tight text-ink">InterVous</span>
         </div>
-        <div className="rounded-lg bg-surface p-6 shadow-1 sm:p-8">
-          <h1 className="text-h3 text-ink">{title}</h1>
-          {lead ? <p className="mt-1 text-small text-ink-2">{lead}</p> : null}
-          <div className="mt-6">{children}</div>
-        </div>
-        {footer ? <div className="mt-4 text-center text-small text-ink-2">{footer}</div> : null}
+        <GlassCard radius="sheet" padding="lg">
+          <h1 className="text-h2 text-ink">{title}</h1>
+          {lead ? <p className="mt-2 text-body text-ink-2">{lead}</p> : null}
+          <div className="mt-7">{children}</div>
+        </GlassCard>
+        {footer ? <div className="mt-5 text-center text-body text-ink-2">{footer}</div> : null}
       </main>
     </div>
   );
@@ -32,30 +35,30 @@ export function PasswordInput({ className, ...rest }: Omit<ComponentProps<"input
   const [visible, setVisible] = useState(false);
   return (
     <div className="relative">
-      <input type={visible ? "text" : "password"} className={cx(controlClass, "h-11 pr-11 text-body", className)} {...rest} />
+      <input type={visible ? "text" : "password"} className={cx(controlClass, "h-12 pr-12", className)} {...rest} />
       <span className="absolute inset-y-0 right-1.5 flex items-center">
         <IconButton
           label={visible ? "Hide password" : "Show password"}
           icon={visible ? EyeOff : Eye}
           size="sm"
           onClick={() => setVisible((v) => !v)}
-          className="pointer-coarse:size-9"
+          className="size-9 pointer-coarse:size-10"
         />
       </span>
     </div>
   );
 }
 
-/** Where to go after signing in: ?next= when it is a path inside the app, else Today. */
+/** Where to go after signing in: ?next= when it is a path inside the app, else Home. */
 export function safeNext(next: string | null | undefined): string {
-  if (!next) return "/today";
+  if (!next) return "/home";
   try {
     const n = decodeURIComponent(next);
-    if (!n.startsWith("/") || n.startsWith("//") || n.startsWith("/\\")) return "/today";
-    if (/^\/(login|reset-password)(\/|$|\?)/.test(n)) return "/today";
+    if (!n.startsWith("/") || n.startsWith("//") || n.startsWith("/\\")) return "/home";
+    if (/^\/(login|reset-password)(\/|$|\?)/.test(n)) return "/home";
     return n;
   } catch {
-    return "/today";
+    return "/home";
   }
 }
 

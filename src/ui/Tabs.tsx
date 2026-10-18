@@ -50,7 +50,7 @@ export function Tabs<Id extends string = string>({
       aria-label={aria["aria-label"]}
       onKeyDown={onKey}
       className={cx(
-        "relative flex gap-1 overflow-x-auto border-b border-line [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+        "relative flex gap-1 overflow-x-auto border-b border-ink/[0.08] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
         className,
       )}
     >
@@ -70,9 +70,9 @@ export function Tabs<Id extends string = string>({
             tabIndex={selected ? 0 : -1}
             onClick={() => onChange(t.id)}
             className={cx(
-              "relative flex h-11 shrink-0 items-center gap-1.5 rounded-t-sm px-3 text-small font-medium",
+              "relative flex h-11 shrink-0 cursor-pointer items-center gap-1.5 rounded-t-[10px] px-3 text-[15px] font-medium",
               "transition-colors duration-[120ms] ease-out focus-visible:outline-offset-[-2px]",
-              selected ? "text-ink" : "text-ink-3 hover:text-ink",
+              selected ? "text-ink" : "text-ink-2 hover:text-ink",
             )}
           >
             {t.label}

@@ -6,22 +6,22 @@ export function Skeleton({ className, lines }: { className?: string; lines?: num
     return (
       <div aria-hidden className={cx("flex flex-col gap-2", className)}>
         {Array.from({ length: lines }, (_, i) => (
-          <div key={i} className={cx("h-4 rounded-sm bg-surface-2", i === lines - 1 && "w-2/3")} />
+          <div key={i} className={cx("h-4 rounded-full bg-ink/[0.07]", i === lines - 1 && "w-2/3")} />
         ))}
       </div>
     );
   }
-  return <div aria-hidden className={cx("h-4 rounded-sm bg-surface-2", className)} />;
+  return <div aria-hidden className={cx("h-4 rounded-full bg-ink/[0.07]", className)} />;
 }
 
 /** A list-row-shaped placeholder (64px). */
 export function SkeletonRow({ className }: { className?: string }) {
   return (
-    <div aria-hidden className={cx("flex h-16 items-center gap-3 rounded-md bg-surface px-4 shadow-1", className)}>
-      <div className="size-8 shrink-0 rounded-sm bg-surface-2" />
+    <div aria-hidden className={cx("iv-glass flex h-[72px] items-center gap-3 rounded-lg px-4", className)}>
+      <div className="size-10 shrink-0 rounded-[11px] bg-ink/[0.07]" />
       <div className="flex flex-1 flex-col gap-2">
-        <div className="h-3.5 w-1/3 rounded-sm bg-surface-2" />
-        <div className="h-3 w-1/4 rounded-sm bg-surface-2" />
+        <div className="h-3.5 w-1/3 rounded-full bg-ink/[0.07]" />
+        <div className="h-3 w-1/4 rounded-full bg-ink/[0.07]" />
       </div>
     </div>
   );

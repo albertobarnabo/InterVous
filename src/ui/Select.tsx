@@ -51,8 +51,8 @@ export function Select<V extends string | number = string>({
         aria-label={aria["aria-label"]}
         className={cx(
           controlClass,
-          "flex items-center justify-between gap-2 text-left pointer-coarse:h-11",
-          size === "md" ? "h-9" : "h-8",
+          "flex cursor-pointer items-center justify-between gap-2 text-left",
+          size === "md" ? "h-11" : "h-9 text-[15px]",
           "data-open:border-accent",
           className,
         )}
@@ -64,7 +64,7 @@ export function Select<V extends string | number = string>({
         anchor={{ to: "bottom start", gap: 4, padding: 8 }}
         transition
         className={cx(
-          "z-30 max-h-72 w-(--button-width) min-w-48 overflow-auto rounded-md bg-surface p-1 shadow-2 ring-1 ring-line",
+          "iv-glass-thick z-30 max-h-72 w-(--button-width) min-w-52 overflow-auto rounded-[16px] p-1.5 shadow-[0_0_0_0.5px_rgba(15,23,42,0.1),0_1px_0_rgba(255,255,255,0.9)_inset,0_16px_40px_rgba(15,23,42,0.16)]",
           "transition duration-[120ms] ease-out focus:outline-none data-closed:opacity-0",
         )}
       >
@@ -74,14 +74,14 @@ export function Select<V extends string | number = string>({
             value={o.value}
             disabled={o.disabled}
             className={cx(
-              "group flex cursor-default items-start gap-2 rounded-sm px-2.5 py-2 text-small text-ink select-none",
-              "data-focus:bg-surface-2 data-disabled:opacity-50 pointer-coarse:min-h-11",
+              "group flex cursor-pointer items-start gap-2 rounded-[10px] px-3 py-2.5 text-body text-ink select-none sm:text-[15px]",
+              "data-focus:bg-ink/[0.06] data-disabled:cursor-not-allowed data-disabled:opacity-50 pointer-coarse:min-h-11",
             )}
           >
             <Check aria-hidden size={16} className="mt-0.5 shrink-0 text-accent invisible group-data-selected:visible" />
             <span className="flex flex-col">
               <span className="group-data-selected:font-medium">{o.label}</span>
-              {o.description ? <span className="text-caption font-normal text-ink-3">{o.description}</span> : null}
+              {o.description ? <span className="text-small text-ink-2">{o.description}</span> : null}
             </span>
           </ListboxOption>
         ))}

@@ -25,14 +25,14 @@ export function Popover({ trigger, children, anchor = "bottom start", className,
         transition
         focus
         className={cx(
-          "z-30 w-[min(20rem,calc(100vw-32px))] rounded-md bg-surface p-4 shadow-2 ring-1 ring-line focus:outline-none",
+          "iv-glass-thick z-30 w-[min(22rem,calc(100vw-32px))] rounded-[20px] p-5 shadow-[0_0_0_0.5px_rgba(15,23,42,0.1),0_1px_0_rgba(255,255,255,0.9)_inset,0_16px_40px_rgba(15,23,42,0.16)] focus:outline-none",
           "transition duration-[120ms] ease-out data-closed:scale-[0.98] data-closed:opacity-0 motion-reduce:data-closed:scale-100",
           className,
         )}
       >
         {({ close }) => (
           <>
-            {title ? <p className="mb-3 text-small font-medium text-ink">{title}</p> : null}
+            {title ? <p className="mb-3 text-body font-semibold text-ink">{title}</p> : null}
             {typeof children === "function" ? children(close) : children}
           </>
         )}

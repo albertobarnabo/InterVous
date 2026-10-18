@@ -11,22 +11,24 @@ export type ChipProps = {
 } & ComponentProps<"button">;
 
 const tones = {
-  neutral: "bg-surface-2 text-ink-2",
+  neutral: "bg-white/70 text-ink-2 shadow-[0_0_0_0.5px_rgba(15,23,42,0.12)]",
   accent: "bg-accent-soft text-accent",
   caution: "bg-caution-soft text-caution",
   danger: "bg-danger-soft text-danger",
 };
 
-/** Filter chip (a toggle button) or a static label chip via <Tag>. */
+/** A capsule toggle (filter, tag picker). For a static label use <Tag>. */
 export function Chip({ selected, tone = "neutral", icon, className, children, type = "button", ...rest }: ChipProps) {
   return (
     <button
       type={type}
       aria-pressed={selected}
       className={cx(
-        "inline-flex h-8 shrink-0 items-center gap-1.5 rounded-sm border px-2.5 text-small font-medium",
-        "transition-[background-color,border-color,color] duration-[120ms] ease-out pointer-coarse:min-h-11",
-        selected ? "border-accent bg-accent-soft text-accent" : cx("border-transparent hover:border-line-strong", tones[tone]),
+        "inline-flex h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-full px-3.5 text-small font-medium",
+        "transition-[background-color,box-shadow,color] duration-150 ease-out pointer-coarse:min-h-10",
+        selected
+          ? "bg-accent text-accent-ink shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]"
+          : cx("hover:bg-white hover:text-ink", tones[tone]),
         className,
       )}
       {...rest}
@@ -37,7 +39,7 @@ export function Chip({ selected, tone = "neutral", icon, className, children, ty
   );
 }
 
-/** A static chip ("Unconfirmed", "Visa"). Pass a title for the explanation. */
+/** A static capsule label. Pass a title for the explanation. */
 export function Tag({
   tone = "neutral",
   className,
@@ -46,7 +48,7 @@ export function Tag({
 }: { tone?: ChipProps["tone"] } & ComponentProps<"span">) {
   return (
     <span
-      className={cx("inline-flex h-6 shrink-0 items-center gap-1 rounded-sm px-2 text-caption whitespace-nowrap", tones[tone], className)}
+      className={cx("inline-flex h-6 shrink-0 items-center gap-1 rounded-full px-2.5 text-caption whitespace-nowrap", tones[tone], className)}
       {...rest}
     >
       {children}

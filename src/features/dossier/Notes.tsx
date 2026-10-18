@@ -4,13 +4,14 @@ import { Check, Pencil } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { updateApplication } from "../../../lib/data";
 import { Button, Textarea, cx } from "@/ui";
+import { Section, solidClass } from "./glass";
 import { Markdown } from "./Markdown";
 
 type SaveState = "idle" | "saving" | "saved" | "error";
 
 /**
- * Notes, markdown, edited in place and saved 800ms after typing stops (spec 2.3).
- * Leaving the field saves at once; the last error stays visible until the next save works.
+ * "Notes": written in place and saved 800ms after typing stops. Leaving the field saves at once;
+ * the last error stays visible until the next save works.
  */
 export function Notes({ jobId, notes }: { jobId: number; notes: string | null }) {
   const [editing, setEditing] = useState(false);
@@ -22,16 +23,19 @@ export function Notes({ jobId, notes }: { jobId: number; notes: string | null })
   const editingRef = useRef(false);
   editingRef.current = editing;
 
-  // A newer value from the server (CLI write, other tab) replaces the text while not editing.
+  // A newer value from the server (command line, another tab) replaces the text while not editing.
   useEffect(() => {
     if (editingRef.current) return;
     setText(notes ?? "");
     saved.current = notes ?? "";
   }, [notes]);
 
-  useEffect(() => () => {
-    if (timer.current) clearTimeout(timer.current);
-  }, []);
+  useEffect(
+    () => () => {
+      if (timer.current) clearTimeout(timer.current);
+    },
+    [],
+  );
 
   const save = async (value: string) => {
     if (timer.current) clearTimeout(timer.current);
@@ -45,7 +49,7 @@ export function Notes({ jobId, notes }: { jobId: number; notes: string | null })
       setError(null);
     } catch (e) {
       setState("error");
-      setError(e instanceof Error ? e.message : "Could not save.");
+      setError(e instanceof Error ? e.message : "It was not saved. Try again.");
     }
   };
 
@@ -56,8 +60,14 @@ export function Notes({ jobId, notes }: { jobId: number; notes: string | null })
     timer.current = setTimeout(() => void save(value), 800);
   };
 
+  const done = () => {
+    void save(text);
+    setEditing(false);
+  };
+
+  let body;
   if (editing) {
-    return (
+    body = (
       <div className="flex flex-col gap-2">
         <Textarea
           aria-label="Notes"
@@ -67,55 +77,53 @@ export function Notes({ jobId, notes }: { jobId: number; notes: string | null })
           onChange={(e) => onChange(e.target.value)}
           onBlur={() => void save(text)}
           onKeyDown={(e) => {
-            if (e.key === "Escape") {
-              void save(text);
-              setEditing(false);
-            }
+            if (e.key === "Escape") done();
           }}
-          placeholder="Anything worth remembering. Markdown works."
-          className="font-serif text-body leading-7"
+          placeholder="Names, salary talk, how the interview went: anything worth remembering."
+          className="text-[16px] leading-7"
         />
         <div className="flex items-center justify-between gap-3">
-          <p aria-live="polite" className={cx("text-caption font-normal", state === "error" ? "text-danger" : "text-ink-3")}>
+          <p aria-live="polite" className={cx("text-[14px]", state === "error" ? "text-danger" : "text-ink-3")}>
             {state === "saving" ? "Saving…" : state === "saved" ? "Saved" : state === "error" ? error : "Saves as you type"}
           </p>
-          <Button
-            size="sm"
-            variant="secondary"
-            icon={Check}
-            onClick={() => {
-              void save(text);
-              setEditing(false);
-            }}
-          >
+          <Button size="sm" variant="primary" icon={Check} onClick={done}>
             Done
           </Button>
         </div>
       </div>
     );
-  }
-
-  if (!text.trim()) {
-    return (
+  } else if (!text.trim()) {
+    body = (
       <button
         type="button"
         onClick={() => setEditing(true)}
-        className="w-full rounded-md border border-dashed border-line-strong px-4 py-4 text-left text-small text-ink-3 hover:border-ink-3 hover:text-ink"
+        className="w-full cursor-pointer rounded-[16px] border border-dashed border-[rgba(15,23,42,0.18)] px-4 py-4 text-left text-[16px] text-ink-2 transition-colors hover:border-[rgba(15,23,42,0.32)] hover:bg-white/40 hover:text-ink"
       >
-        No notes yet. Write one
+        No notes yet. Tap to write one.
       </button>
+    );
+  } else {
+    body = (
+      <div className={cx(solidClass, "px-4 py-3 sm:px-5 sm:py-4")}>
+        <Markdown text={text} className="max-w-[70ch] text-[16px] leading-[1.65] text-ink" />
+        {state === "error" ? <p className="mt-2 text-[14px] text-danger">{error}</p> : null}
+      </div>
     );
   }
 
   return (
-    <div className="group relative">
-      <div className="font-serif text-body leading-7 text-ink">
-        <Markdown text={text} />
-      </div>
-      <Button size="sm" variant="quiet" icon={Pencil} onClick={() => setEditing(true)} className="mt-2 -ml-2.5">
-        Edit notes
-      </Button>
-      {state === "error" ? <p className="mt-1 text-caption text-danger">{error}</p> : null}
-    </div>
+    <Section
+      id="notes"
+      title="Notes"
+      action={
+        !editing && text.trim() ? (
+          <Button size="sm" variant="secondary" icon={Pencil} onClick={() => setEditing(true)}>
+            Edit
+          </Button>
+        ) : null
+      }
+    >
+      {body}
+    </Section>
   );
 }

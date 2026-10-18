@@ -205,6 +205,95 @@ export async function movePhase(jobId: number, to: Phase, opts: { on?: string; n
     return { event, from: from ?? null, to, moved, undo };
 }
 
+type JobState = { phase: Phase | null; applied_on: string | null; uncertain: string[] };
+
+async function jobState(jobId: number): Promise<JobState> {
+    if (FIXTURE_MODE) {
+        const j = (await loadFixture()).jobs.find((x) => x.id === jobId);
+        if (!j) throw nothingUpdated('application');
+        return { phase: (j.phase as Phase | null) ?? null, applied_on: j.applied_on ?? null, uncertain: [...((j.uncertain ?? []) as string[])] };
+    }
+    const j = must(await db.from('jobs').select('phase,applied_on,uncertain').eq('id', jobId).maybeSingle()) as
+        | { phase: Phase | null; applied_on: string | null; uncertain: string[] | null }
+        | null;
+    if (!j) throw nothingUpdated('application');
+    return { phase: j.phase ?? null, applied_on: j.applied_on ?? null, uncertain: [...(j.uncertain ?? [])] };
+}
+
+export type RecordResult = {
+    events: JobEvent[];
+    from: Phase | null;
+    /** The phase after the write. */
+    to: Phase | null;
+    /** Deletes the new events and puts phase, applied_on and uncertain back, leaving no trace. */
+    undo: () => Promise<void>;
+};
+
+/**
+ * One "what happened" update of an application, undoable as a whole:
+ *   events   inserted in order (the database moves the phase and fills applied_on, as for logEvent)
+ *   patch    jobs columns written after them (e.g. applied_on for a corrected sent date)
+ *   confirm  fields the user just stated, removed from jobs.uncertain
+ */
+export async function recordUpdate(
+    jobId: number,
+    input: { events?: NewEvent[]; patch?: Pick<JobUpdate, 'applied_on'>; confirm?: string[] },
+): Promise<RecordResult> {
+    const before = await jobState(jobId);
+    const events: JobEvent[] = [];
+    try {
+        for (const ev of input.events ?? []) events.push(await logEvent(jobId, ev));
+        const patch: JobUpdate = { ...(input.patch ?? {}) };
+        const left = before.uncertain.filter((f) => !(input.confirm ?? []).includes(f));
+        if (left.length !== before.uncertain.length) patch.uncertain = left;
+        if (Object.keys(patch).length) await updateApplication(jobId, patch);
+    } catch (e) {
+        for (const ev of events) await deleteEvent(ev.id).catch(() => undefined);
+        throw toError(e);
+    }
+    const after = await jobState(jobId);
+
+    const undo = async () => {
+        const restore: JobUpdate = {};
+        if (after.phase !== before.phase) restore.phase = before.phase as JobUpdate['phase'];
+        if (after.applied_on !== before.applied_on) restore.applied_on = before.applied_on;
+        if (after.uncertain.join() !== before.uncertain.join()) restore.uncertain = before.uncertain;
+        patchListRow(jobId, { phase: before.phase } as Partial<Application>);
+        if (FIXTURE_MODE) {
+            const f = await loadFixture();
+            const ids = new Set(events.map((e) => e.id));
+            f.events = f.events.filter((e) => !ids.has(e.id));
+            const job = f.jobs.find((j) => j.id === jobId);
+            if (job) Object.assign(job, restore);
+            deriveOverview(f, jobId);
+            await invalidateAll();
+            return;
+        }
+        for (const ev of events) must(await db.from('job_events').delete().eq('id', ev.id));
+        if (Object.keys(restore).length) {
+            await updateOne<JobRow>('jobs', { id: jobId }, restore, 'application');
+            if ('phase' in restore) {
+                // The direct phase edit logged an automatic phase_change; remove it so Undo leaves no trace.
+                const auto = must(
+                    await db
+                        .from('job_events')
+                        .select('id')
+                        .eq('job_id', jobId)
+                        .eq('kind', 'phase_change')
+                        .eq('source', 'auto')
+                        .eq('to_phase', before.phase as string)
+                        .order('id', { ascending: false })
+                        .limit(1),
+                ) as { id: number }[] | null;
+                if (auto?.length) must(await db.from('job_events').delete().eq('id', auto[0].id));
+            }
+        }
+        await invalidateAll();
+    };
+
+    return { events, from: before.phase, to: after.phase, undo };
+}
+
 // ── child rows edited from the web ──────────────────────────────────────────
 
 /** Edit a fit item (gap_state chip, evidence, note). */

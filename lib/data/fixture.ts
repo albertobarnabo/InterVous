@@ -4,6 +4,7 @@
 // (written by WP2 / `intervous import --emit-fixture`), never bundled. Writes change an in-memory
 // copy and imitate the database triggers closely enough to exercise the screens; a reload resets it.
 import { appUrl } from '../api';
+import { slugify } from '../core';
 import type { Phase } from '../types';
 import { todayIn } from './dates';
 import {
@@ -66,7 +67,32 @@ function normalize(raw: Raw): FixtureData {
         today: typeof raw.today === 'string' ? raw.today : null,
         placeholder: raw.placeholder === true,
     };
+    seedCompanies(data);
     return data;
+}
+
+const normName = (s: string | null | undefined) => String(s ?? '').trim().toLowerCase();
+
+/**
+ * Adds a company record for every company name the applications use and the fixture lacks, so
+ * every application has a company to show, link and give a logo. A record takes the company_id
+ * one of those applications already carries, so rows linked by id and by name meet.
+ */
+function seedCompanies(f: FixtureData) {
+    const byName = new Map(f.companies.map((c) => [normName(c.name), c]));
+    const ids = new Set(f.companies.map((c) => c.id));
+    for (const a of f.apps) {
+        const name = String(a.company_name ?? '').trim();
+        const k = normName(name);
+        if (!name || byName.has(k)) continue;
+        const known = f.apps.find((x) => normName(x.company_name) === k && x.company_id && !ids.has(x.company_id))?.company_id;
+        const id = known ?? `fx-${slugify(name) || 'company'}`;
+        if (ids.has(id)) continue;
+        const c: FixtureCompany = { id, name, website: null, logo_url: null };
+        f.companies.push(c);
+        byName.set(k, c);
+        ids.add(id);
+    }
 }
 
 let loading: Promise<FixtureData> | null = null;

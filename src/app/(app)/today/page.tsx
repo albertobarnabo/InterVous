@@ -1,13 +1,6 @@
-import type { Metadata } from "next";
-import { Suspense } from "react";
-import { TodayView } from "@/features/today/TodayView";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = { title: "Today · InterVous" };
-
+// Today became Home. next.config.mjs already redirects /today to /home; this is the fallback.
 export default function TodayPage() {
-  return (
-    <Suspense>
-      <TodayView />
-    </Suspense>
-  );
+  redirect("/home");
 }

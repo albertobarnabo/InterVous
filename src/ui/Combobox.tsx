@@ -76,9 +76,9 @@ export function Combobox<T>({
           placeholder={placeholder}
           displayValue={(it: T | null) => (it ? getLabel(it) : "")}
           onChange={(e) => setQuery(e.target.value)}
-          className={cx(controlClass, "h-9 pr-9 pointer-coarse:h-11")}
+          className={cx(controlClass, "h-11 pr-10")}
         />
-        <ComboboxButton className="absolute inset-y-0 right-0 flex w-9 items-center justify-center text-ink-3" aria-label="Show options">
+        <ComboboxButton className="absolute inset-y-0 right-0 flex w-10 cursor-pointer items-center justify-center text-ink-3 hover:text-ink" aria-label="Show options">
           <ChevronDown aria-hidden size={16} />
         </ComboboxButton>
       </div>
@@ -86,7 +86,7 @@ export function Combobox<T>({
         anchor={{ to: "bottom start", gap: 4, padding: 8 }}
         transition
         className={cx(
-          "z-30 max-h-72 w-(--input-width) min-w-56 overflow-auto rounded-md bg-surface p-1 shadow-2 ring-1 ring-line empty:invisible",
+          "iv-glass-thick z-30 max-h-72 w-(--input-width) min-w-56 overflow-auto rounded-[16px] p-1.5 shadow-[0_0_0_0.5px_rgba(15,23,42,0.1),0_1px_0_rgba(255,255,255,0.9)_inset,0_16px_40px_rgba(15,23,42,0.16)] empty:invisible",
           "transition duration-[120ms] ease-out data-closed:opacity-0",
         )}
       >
@@ -94,7 +94,7 @@ export function Combobox<T>({
           <ComboboxOption
             key={getKey(it)}
             value={it}
-            className="group flex cursor-default items-center gap-2 rounded-sm px-2.5 py-2 text-small text-ink select-none data-focus:bg-surface-2 pointer-coarse:min-h-11"
+            className="group flex cursor-pointer items-center gap-2 rounded-[10px] px-3 py-2.5 text-body text-ink select-none data-focus:bg-ink/[0.06] sm:text-[15px] pointer-coarse:min-h-11"
           >
             <Check aria-hidden size={16} className="shrink-0 text-accent invisible group-data-selected:visible" />
             <span className="min-w-0 flex-1 truncate">{renderItem ? renderItem(it) : getLabel(it)}</span>
@@ -104,13 +104,13 @@ export function Combobox<T>({
           <button
             type="button"
             onClick={() => onCreate(query.trim())}
-            className="flex w-full items-center gap-2 rounded-sm px-2.5 py-2 text-left text-small text-accent hover:bg-surface-2 pointer-coarse:min-h-11"
+            className="flex w-full cursor-pointer items-center gap-2 rounded-[10px] px-3 py-2.5 text-left text-body font-medium text-accent hover:bg-ink/[0.06] sm:text-[15px] pointer-coarse:min-h-11"
           >
             Create “{query.trim()}”
           </button>
         ) : null}
         {!shown.length && !(onCreate && q) ? (
-          <p className="px-2.5 py-2 text-small text-ink-3">{emptyText}</p>
+          <p className="px-3 py-2.5 text-small text-ink-2">{emptyText}</p>
         ) : null}
       </ComboboxOptions>
     </HCombobox>
