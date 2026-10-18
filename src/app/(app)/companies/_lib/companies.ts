@@ -312,7 +312,11 @@ export async function saveCompanyInfo(info: Omit<CompanyInfo, "updated_at" | "up
   return saved;
 }
 
-export type ResearchResult = Pick<CompanyInfo, "description" | "industry" | "headquarters" | "founded" | "employee_count">;
+export type ResearchResult = Pick<CompanyInfo, "description" | "industry" | "headquarters" | "founded" | "employee_count"> & {
+  /** The company's website and an image link to its logo, when the search found them. */
+  website?: string | null;
+  logo_url?: string | null;
+};
 
 /** Tavily web search through /intervous/api/company-research. Errors carry the server's {error} text. */
 export async function researchCompany(company: Pick<CompanyWithTags, "name" | "website">): Promise<ResearchResult> {

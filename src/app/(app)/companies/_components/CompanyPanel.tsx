@@ -13,6 +13,7 @@ import {
   domainOf,
   getCompanyInfo,
   researchCompany,
+  saveLogo,
   saveCompanyInfo,
   type CompanyInfo,
   type CompanyWithTags,
@@ -245,6 +246,12 @@ function About({ company, tavily }: { company: CompanyWithTags; tavily: boolean 
       setDraft(toDraft(r));
       setFromWeb(true);
       setEditing(true);
+      // A found logo is saved straight away, but never replaces one the company already has.
+      if (r.logo_url && !company.logo_url) {
+        await saveLogo(company.id, r.logo_url)
+          .then(() => show({ text: "Logo added from the web. Change it any time." }))
+          .catch(() => undefined);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Auto-fill found nothing. Try again or fill it in yourself.");
     } finally {
