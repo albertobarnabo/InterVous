@@ -1,6 +1,7 @@
 "use client";
 
 import { Menu as HMenu, MenuButton, MenuItem, MenuItems, MenuSeparator } from "@headlessui/react";
+import { BrandMark } from "@/ui";
 import { Building2, House, LayoutList, LogOut, Plus, Search, Settings, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -33,12 +34,7 @@ function isActive(pathname: string, item: NavItem) {
 function Wordmark() {
   return (
     <Link href="/home" className="flex h-10 shrink-0 cursor-pointer items-center gap-2.5 rounded-full pr-2" aria-label="InterVous, go to Home">
-      <span
-        aria-hidden
-        className="flex size-8 items-center justify-center rounded-[10px] bg-accent text-[15px] font-semibold tracking-tight text-accent-ink shadow-[inset_0_1px_0_rgba(255,255,255,0.25),0_2px_6px_rgba(26,107,107,0.35)]"
-      >
-        iv
-      </span>
+      <BrandMark size={30} strokeWidth={8} />
       <span className="text-[17px] font-semibold tracking-tight text-ink">InterVous</span>
     </Link>
   );

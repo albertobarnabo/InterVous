@@ -100,3 +100,4 @@ export {
   onShellEvent,
   isTypingTarget,
 } from "./events";
+export { BrandMark } from "./BrandMark";
