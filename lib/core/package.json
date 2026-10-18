@@ -1,0 +1,7 @@
+{
+  "name": "intervous-core",
+  "private": true,
+  "type": "module",
+  "description": "InterVous core logic (phases, dates, slugs, now sentence, stats, Today queue, insights). No dependencies.",
+  "types": "./index.d.ts"
+}

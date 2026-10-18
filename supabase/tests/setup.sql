@@ -7,7 +7,10 @@
 --   id_type        integer (live) | bigint
 --   date_type      text (live)    | date | timestamptz
 --   strict         0 | 1   1 = legacy columns NOT NULL, a created_at column and two pre-existing triggers on jobs
---   storage_owner  1 | 0   0 = postgres may not create policies on storage.objects ("must be owner")
+--   storage_owner  1 | 0   0 = postgres may not create policies on storage.objects ("must be owner"),
+--                          done by emptying supautils.policy_grants
+--   conflict       0 | 1   1 = a table named job_overview already exists, so the migration fails
+--                          late (section 7); used to prove the single transaction leaves no trace
 \set ON_ERROR_STOP 1
 \if :{?id_type}
 \else
@@ -25,6 +28,10 @@
 \else
   \set storage_owner 1
 \endif
+\if :{?conflict}
+\else
+  \set conflict 0
+\endif
 
 -- stubs for what storage-api and the live project already have
 create table if not exists storage.buckets(id text primary key, name text not null, owner uuid, public boolean default false,
@@ -38,13 +45,18 @@ grant all on storage.objects, storage.buckets to authenticated, postgres;
 alter table storage.objects owner to supabase_storage_admin;
 alter table storage.buckets owner to supabase_storage_admin;
 insert into storage.buckets(id, name, public) values ('user_avatars', 'user_avatars', true);
+-- Live Supabase lets postgres create policies on storage.objects through supautils.policy_grants.
+-- Projects without that grant fail with "must be owner of table objects": reproduce that on demand.
 \if :storage_owner
-grant supabase_storage_admin to postgres;
+\else
+alter system set supautils.policy_grants = '{}';
+select pg_reload_conf();
+select pg_sleep(0.5);
 \endif
 insert into auth.users(id, email) values ('f54bff0b-9aa2-4e54-b93b-b81bfb671f70','a@x'),('00000000-0000-0000-0000-000000000002','b@x');
 
 set role postgres;
-create table public.companies(id uuid primary key default gen_random_uuid(), name text not null, website text, logo_url text, created_by uuid, created_at timestamptz default now());
+create table public.companies(id uuid primary key default gen_random_uuid(), name text not null, website text, logo_url text, created_by uuid);  -- live has no created_at
 alter table public.companies enable row level security;
 create policy c_all on public.companies for all to authenticated using (true) with check (true);
 grant all on public.companies to authenticated;
@@ -84,4 +96,7 @@ insert into public.jobs(id,user_id,company_name,role,location,application_date,s
  (134,'f54bff0b-9aa2-4e54-b93b-b81bfb671f70','European Central Bank','Internal move: SSM Governance','Frankfurt','2026-09-24','Active','Screening',''),
  (140,'f54bff0b-9aa2-4e54-b93b-b81bfb671f70','Mistral AI','Applied AI, FDE','London, UK','2026-10-11','Active','Screening','https://jobs.lever.co/mistral/fde?lever-source=li');
 select setval(pg_get_serial_sequence('public.jobs','id'), 200);
+\if :conflict
+create table public.job_overview(x int);
+\endif
 reset role;

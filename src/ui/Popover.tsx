@@ -21,7 +21,7 @@ export function Popover({ trigger, children, anchor = "bottom start", className,
     <HPopover>
       <PopoverButton as={Fragment}>{trigger}</PopoverButton>
       <PopoverPanel
-        anchor={{ to: anchor, gap: 6 }}
+        anchor={{ to: anchor, gap: 6, padding: 8 }}
         transition
         focus
         className={cx(

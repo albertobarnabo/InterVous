@@ -5,6 +5,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const css = readFileSync(join(root, 'src/app/globals.css'), 'utf8');
@@ -55,18 +56,47 @@ const pairs = [
   ['accent-ink', 'accent'],
   ['ink', 'accent-soft'],
   ['danger', 'bg'], ['danger', 'surface'], ['danger', 'danger-soft'],
-  ['phase-draft-fg', 'phase-draft-bg'],
-  ['phase-applied-fg', 'phase-applied-bg'],
-  ['phase-screening-fg', 'phase-screening-bg'],
-  ['phase-interviewing-fg', 'phase-interviewing-bg'],
-  ['phase-offer-fg', 'phase-offer-bg'],
-  ['phase-rejected-fg', 'phase-rejected-bg'],
-  ['phase-closed-fg', 'phase-closed-bg'],
   ['caution-fg', 'caution-bg'],
 ];
 
 let failures = 0;
 const rows = [];
+
+// Phase pills and the caution callout: token names and expected values come from
+// lib/core/phases.mjs (the single source); globals.css must define exactly those values.
+let phases = null;
+try {
+  phases = await import(pathToFileURL(join(root, 'lib/core/phases.mjs')).href);
+} catch {
+  rows.push('note  lib/core/phases.mjs not found: checking the phase tokens by name only');
+}
+const PHASE_IDS = ['draft', 'applied', 'screening', 'interviewing', 'offer', 'rejected', 'no_reply', 'withdrawn', 'skipped'];
+for (const id of phases?.PHASES ?? PHASE_IDS) {
+  const t = phases?.phaseTokens ? phases.phaseTokens(id) : { fg: `--phase-${id.replace(/_/g, '-')}-fg`, bg: `--phase-${id.replace(/_/g, '-')}-bg` };
+  pairs.push([t.fg.slice(2), t.bg.slice(2)]);
+  const want = phases?.PHASE_COLORS?.[id];
+  if (!want) continue;
+  for (const theme of ['light', 'dark']) {
+    for (const part of ['fg', 'bg']) {
+      const have = themes[theme][t[part].slice(2)];
+      if (have !== want[theme][part].toUpperCase()) {
+        failures++;
+        rows.push(`FAIL ${theme.padEnd(5)} ${t[part]} is ${have ?? 'missing'}, lib/core/phases.mjs says ${want[theme][part]}`);
+      }
+    }
+  }
+}
+if (phases?.CAUTION_COLORS) {
+  for (const theme of ['light', 'dark']) {
+    for (const part of ['fg', 'bg']) {
+      const have = themes[theme][`caution-${part}`];
+      if (have !== phases.CAUTION_COLORS[theme][part].toUpperCase()) {
+        failures++;
+        rows.push(`FAIL ${theme.padEnd(5)} --caution-${part} is ${have ?? 'missing'}, lib/core/phases.mjs says ${phases.CAUTION_COLORS[theme][part]}`);
+      }
+    }
+  }
+}
 for (const [theme, t] of Object.entries(themes)) {
   for (const [fg, bg] of pairs) {
     if (!t[fg] || !t[bg]) {

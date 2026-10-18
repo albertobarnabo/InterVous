@@ -9,7 +9,7 @@ interface JobFields {
 export async function extractFieldsWithOpenAI(jobText: string, apiKey: string): Promise<JobFields> {
 
     if (!apiKey || apiKey === "") {
-        throw new Error("You have not inserted an API key for this model. Please instert a key or change the moddel");
+        throw new Error("No API key saved for this model. Add one in Settings.");
     }
 
     const openai = new OpenAI({
@@ -46,7 +46,8 @@ ${jobText}
 
         return parsed as JobFields;
     } catch (error) {
-        console.warn("⚠️ LLM returned unparsable content or error:", error);
+        // The route turns this into a message for the browser; never log the error object (it carries request details).
+        console.warn("LLM extraction failed:", error instanceof Error ? error.name : typeof error);
         throw error;
     }
 }

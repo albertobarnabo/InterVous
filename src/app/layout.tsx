@@ -3,8 +3,6 @@ import { Geist, Geist_Mono, Source_Serif_4 } from "next/font/google";
 import "./globals.css";
 
 import { AuthProvider } from "../../contexts/AuthContext";
-// The old toast stays mounted until WP9 ports the old components to src/ui/Toast.
-import { ToastProvider as LegacyToastProvider } from "@/components/Toast";
 import { ToastProvider } from "@/ui/Toast";
 
 const geistSans = Geist({
@@ -56,9 +54,7 @@ export default function RootLayout({
     >
       <body className="min-h-dvh bg-bg font-sans text-body text-ink antialiased">
         <AuthProvider>
-          <LegacyToastProvider>
-            <ToastProvider>{children}</ToastProvider>
-          </LegacyToastProvider>
+          <ToastProvider>{children}</ToastProvider>
         </AuthProvider>
       </body>
     </html>

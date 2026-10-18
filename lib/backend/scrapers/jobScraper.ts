@@ -1,35 +1,38 @@
-import axios from "axios";
 import * as cheerio from "cheerio";
+import { FetchError, safeFetchText } from "./safeFetch";
+
+/** How much page text goes to the AI model. */
+const MAX_CHARS = 4000;
+/** Under this, the page is a shell (JavaScript-only, a sign-in wall), not a posting. */
+const MIN_CHARS = 100;
 
 /**
- * Fetches a job page and returns cleaned text for LLM extraction.
- * @param url - The URL of the job posting.
- * @returns A cleaned, trimmed string with relevant page content.
+ * Fetches a job page (through the SSRF guard in ./safeFetch) and returns cleaned text for LLM
+ * extraction. Throws FetchError, whose message is safe to show and whose status the route returns.
  */
-export async function extractJobTextFromUrl(url: string): Promise<string | null> {
-    try {
-        const response = await axios.get(url, {
-            headers: {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
-            },
-            timeout: 10000,
-        });
+export async function extractJobTextFromUrl(url: string): Promise<{ text: string; finalUrl: string }> {
+    const page = await safeFetchText(url);
 
-        const html = response.data;
-        const $ = cheerio.load(html);
-
-        // Remove <script> and <style> tags
-        $("script, style").remove();
-
-        // Extract and clean text
-        const rawText = $("body").text();
-        const lines = rawText.split("\n").map(line => line.trim()).filter(Boolean);
-        const cleanText = lines.join("\n");
-
-        // Trim to 4000 chars for LLM input
-        return cleanText.slice(0, 4000);
-    } catch (error) {
-        console.error("❌ Failed to fetch or parse page:", error);
-        return null;
+    let text: string;
+    if (/html|xml/i.test(page.contentType) || /^\s*</.test(page.body)) {
+        const $ = cheerio.load(page.body);
+        $("script, style, noscript, template, svg, iframe").remove();
+        text = $("body").text() || $.root().text();
+    } else {
+        text = page.body;
     }
+
+    const clean = text
+        .split("\n")
+        .map((line) => line.replace(/\s+/g, " ").trim())
+        .filter(Boolean)
+        .join("\n");
+
+    if (clean.length < MIN_CHARS) {
+        throw new FetchError(
+            "The page has almost no text: it may need JavaScript or a sign-in. Use Paste JD instead.",
+            422,
+        );
+    }
+    return { text: clean.slice(0, MAX_CHARS), finalUrl: page.url };
 }

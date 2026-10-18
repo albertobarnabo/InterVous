@@ -61,7 +61,7 @@ export function Select<V extends string | number = string>({
         <ChevronDown aria-hidden size={16} className="shrink-0 text-ink-3" />
       </ListboxButton>
       <ListboxOptions
-        anchor={{ to: "bottom start", gap: 4 }}
+        anchor={{ to: "bottom start", gap: 4, padding: 8 }}
         transition
         className={cx(
           "z-30 max-h-72 w-(--button-width) min-w-48 overflow-auto rounded-md bg-surface p-1 shadow-2 ring-1 ring-line",

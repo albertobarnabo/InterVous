@@ -170,10 +170,16 @@ $$;
 
 -- legacy application_date -> date, whatever type the live column has (text, date, timestamp, timestamptz).
 -- Postgres picks the overload from the column type, so no cast to text (and no DateStyle) is involved.
+-- text: 'YYYY-MM-DD...' -> date; anything else, or an impossible date like 2026-02-30, -> NULL
+-- (never an error, so one odd legacy value cannot abort the backfill)
 create or replace function public.iv_parse_date(s text)
-returns date language sql immutable set search_path = public, pg_temp as $$
-  select case when s ~ '^\d{4}-\d{2}-\d{2}' then left(s, 10)::date end
-$$;
+returns date language plpgsql immutable set search_path = public, pg_temp as $$
+begin
+  if s ~ '^\d{4}-\d{2}-\d{2}' then return left(s, 10)::date; end if;
+  return null;
+exception when others then
+  return null;
+end $$;
 create or replace function public.iv_parse_date(s date)
 returns date language sql immutable set search_path = public, pg_temp as $$ select s $$;
 create or replace function public.iv_parse_date(s timestamp)
@@ -413,6 +419,13 @@ begin
   return new;
 end $$;
 
+-- The phase follows the newest phase-bearing event that has already happened. A new event with a
+-- to_phase moves the phase unless another phase-bearing event is dated after it AND has already
+-- happened (its occurred_at has passed; without a time, its day has begun in the database time
+-- zone, UTC on Supabase). A future-dated
+-- event (an interview scheduled for next week) only means "scheduled": it never holds the phase,
+-- so a rejection, withdrawal or offer recorded today, or backdated, still wins. A newer event that
+-- has happened is real history and keeps the phase (backfilling an old rejection behind it is a no-op).
 create or replace function public.iv_events_after_insert()
 returns trigger language plpgsql set search_path = public, pg_temp as $$
 begin
@@ -422,7 +435,8 @@ begin
               when new.to_phase is not null and not exists (
                      select 1 from public.job_events e
                       where e.job_id = new.job_id and e.id <> new.id
-                        and e.to_phase is not null and e.occurred_on > new.occurred_on)
+                        and e.to_phase is not null and e.occurred_on > new.occurred_on
+                        and coalesce(e.occurred_at, e.occurred_on::timestamptz) <= now())
               then new.to_phase else j.phase end,
     applied_on = case when new.kind = 'applied' then coalesce(j.applied_on, new.occurred_on) else j.applied_on end,
     last_activity_at = greatest(coalesce(j.last_activity_at, '-infinity'::timestamptz),
@@ -562,7 +576,7 @@ begin
   -- company: case-insensitive exact match; create unless company_create = false
   if v_company is not null then
     select id, name into v_company_id, v_company_canon from public.companies
-     where lower(trim(name)) = lower(v_company) order by created_at limit 1;
+     where lower(trim(name)) = lower(v_company) order by name, id limit 1;  -- live companies has no created_at
     if found then
       v_company := v_company_canon;            -- keep the stored spelling so the name join works
     elsif coalesce((p->>'company_create')::boolean, true) then

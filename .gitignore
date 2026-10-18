@@ -30,9 +30,11 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files
-.env.local
-.env*.local
+# env files (.env holds the Supabase URL and anon key; it is still tracked until it is untracked
+# with `git rm --cached .env`)
+.env
+.env.*
+!.env.example
 
 # vercel
 .vercel
@@ -40,3 +42,14 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# personal application data used by local tests and dev fixture mode
+lib/core/test/fixture.json
+
+# scratch outputs (local runs, screenshots, logs, Supabase CLI state)
+/scratch/
+/tmp/
+/screenshots/
+*.log
+supabase/.temp/
+supabase/.branches/

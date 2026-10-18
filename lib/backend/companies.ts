@@ -1,4 +1,5 @@
 
+import { likeLiteral } from '../data/client';
 import { supabase } from '../supbaseClient';
 import { Company, CompanyTag, CompanyWithTags, SortOption } from '../types';
 
@@ -26,12 +27,16 @@ export async function getCompanies(
             .eq('company_tag_map.tag_id', tagId);
     }
 
-    if (searchQuery) {
-        query = query.ilike('name', `%${searchQuery}%`);
+    // searchQuery is the raw text the user typed: % _ \ and * are escaped here, once, so they match
+    // literally (callers must not escape it themselves).
+    const q = searchQuery.trim();
+    if (q) {
+        query = query.ilike('name', `%${likeLiteral(q)}%`);
     }
 
-    if (letter) {
-        query = query.ilike('name', `${letter}%`);
+    // The A–Z rail: one letter or digit, nothing that could widen the pattern.
+    if (letter && /^[\p{L}\p{N}]$/u.test(letter)) {
+        query = query.ilike('name', `${likeLiteral(letter)}%`);
     }
 
     // 'shuffle' orders by uuid: effectively random but stable, so pages never repeat

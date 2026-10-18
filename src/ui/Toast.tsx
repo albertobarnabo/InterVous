@@ -10,7 +10,7 @@ export type ToastInput = {
   kind?: ToastKind;
   text: ReactNode;
   /** The Undo (or similar) action. Running it dismisses the toast. */
-  action?: { label: string; run: () => void | Promise<void> };
+  action?: { label: string; run: () => unknown };
   /** Milliseconds; default 5000 (the Undo window), errors 8000. */
   duration?: number;
 };

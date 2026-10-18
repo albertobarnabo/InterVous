@@ -20,6 +20,6 @@ Intervous is an AI-powered job application and interview management platform des
 
 ## Website
 
-You can try InterVous [here](https://albertobarnabo.it/intervous)!
+You can try InterVous [here](https://albertobarnabo.com/intervous)!
 
 Notice: In order to login, you will need credentials. If you don't have them, please [contact me](mailto:[alberto.barnabo@gmail.com]).

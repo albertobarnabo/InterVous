@@ -132,6 +132,47 @@ select pg_temp.check(open_gaps = 2, 'overview: no_longer_true gaps are not open'
   from job_overview where slug = 'ai-futures-senior-ai-product-engineer-frankfurt';
 select pg_temp.check(answer_count = 1 and unsaved_answers = 0, 'overview: answer counts') from job_overview where slug = 'mistral-applied-ai-fde-london';
 
+-- F2. a newer phase-bearing event only holds the phase once it has happened: an interview that is
+--     still ahead never blocks a later-recorded rejection, withdrawal or offer; one in the past does.
+--     Dates are relative to the run day, so the checks hold on any day.
+select public.iv_upsert_application(format($j${"slug":"%s","company":"OpenAI","role":"Phase test","phase":"applied","applied_on":"2026-09-01"}$j$, s)::jsonb)
+  from unnest(array['iv-next-week-rejected','iv-in-3-days-withdrawn','iv-later-today-offer','iv-2-days-ago-decides','iv-hour-ago-decides']) s;
+insert into job_events(job_id, kind, occurred_on, title)
+select id, 'interview_scheduled', current_date + 7, 'Round 1' from jobs where slug = 'iv-next-week-rejected';
+insert into job_events(job_id, kind, occurred_on, title)
+select id, 'interview_scheduled', current_date + 3, 'Round 1' from jobs where slug = 'iv-in-3-days-withdrawn';
+insert into job_events(job_id, kind, occurred_on, occurred_at, title)
+select id, 'interview_scheduled', (now() + interval '3 hours')::date, now() + interval '3 hours', 'Round 1' from jobs where slug = 'iv-later-today-offer';
+insert into job_events(job_id, kind, occurred_on, title)
+select id, 'interview_scheduled', current_date - 2, 'Round 1' from jobs where slug = 'iv-2-days-ago-decides';
+insert into job_events(job_id, kind, occurred_on, occurred_at, title)
+select id, 'interview_scheduled', (now() - interval '1 hour')::date, now() - interval '1 hour', 'Round 1' from jobs where slug = 'iv-hour-ago-decides';
+select pg_temp.check(count(*) = 5 and bool_and(phase = 'interviewing'),
+                     'interview_scheduled moves applied -> interviewing, also when dated ahead')
+  from jobs where slug like 'iv-%';
+insert into job_events(job_id, kind, occurred_on) select id, 'rejection', current_date     from jobs where slug = 'iv-next-week-rejected';
+insert into job_events(job_id, kind, occurred_on) select id, 'withdrawn', current_date - 1 from jobs where slug = 'iv-in-3-days-withdrawn';
+insert into job_events(job_id, kind, occurred_on) select id, 'offer',     current_date - 1 from jobs where slug = 'iv-later-today-offer';
+insert into job_events(job_id, kind, occurred_on) select id, 'rejection', current_date - 5 from jobs where slug = 'iv-2-days-ago-decides';
+insert into job_events(job_id, kind, occurred_on) select id, 'rejection', current_date - 2 from jobs where slug = 'iv-hour-ago-decides';
+select j.slug, j.phase, j.status, e.kind, e.occurred_on, e.occurred_at, e.from_phase, e.to_phase
+  from jobs j join job_events e on e.job_id = j.id where j.slug like 'iv-%' order by j.id, e.id;
+select pg_temp.check(phase = 'rejected' and status = 'Inactive', 'rejection recorded today beats an interview scheduled next week')
+  from jobs where slug = 'iv-next-week-rejected';
+select pg_temp.check(phase = 'withdrawn' and status = 'Inactive', 'withdrawal backdated to yesterday beats an interview in 3 days')
+  from jobs where slug = 'iv-in-3-days-withdrawn';
+select pg_temp.check(phase = 'offer' and status = 'Active', 'offer beats an interview later today that has not happened yet (occurred_at)')
+  from jobs where slug = 'iv-later-today-offer';
+select pg_temp.check(phase = 'interviewing', 'an interview 2 days ago still decides over an older backfilled rejection')
+  from jobs where slug = 'iv-2-days-ago-decides';
+select pg_temp.check(phase = 'interviewing', 'an interview an hour ago (occurred_at) still decides over an older backfilled rejection')
+  from jobs where slug = 'iv-hour-ago-decides';
+select pg_temp.check(count(*) filter (where e.kind = 'phase_change') = 0
+                     and count(*) filter (where e.kind in ('rejection','withdrawn','offer')
+                                            and e.from_phase = 'interviewing' and e.to_phase is not null) = 5,
+                     'outcome events record interviewing -> outcome; no automatic phase_change logged')
+  from job_events e join jobs j on j.id = e.job_id where j.slug like 'iv-%';
+
 -- G. bad input is refused
 do $$ begin
   perform public.iv_upsert_application('{"slug":"Bad Slug"}');
@@ -152,6 +193,10 @@ declare n int; bad text;
 begin
   select count(*) filter (where not ok), string_agg(what, E'\n  ') filter (where not ok) into n, bad from _expect;
   if n > 0 then raise exception E'% check(s) failed:\n  %', n, bad; end if;
+  -- a check over a missing row records nothing: make sure every check actually ran
+  if (select count(*) from _expect) <> 38 then
+    raise exception 'expected 38 checks to run, % ran (a row a check looks at is missing)', (select count(*) from _expect);
+  end if;
   raise notice 'test.sql: % checks passed', (select count(*) from _expect);
 end $$;
 commit;

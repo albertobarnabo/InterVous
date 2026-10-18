@@ -1,761 +1,130 @@
 #!/usr/bin/env node
-// intervous — command-line access to InterVous as the signed-in user.
+// intervous: InterVous from the terminal, as the signed-in user (spec section 6).
 //
-// Auth: `intervous login` asks for the password in the terminal (hidden input) and
-// stores the Supabase session in ~/.config/intervous/session.json (mode 600). Every
-// later command reuses that session; supabase-js refreshes the access token from the
-// refresh token when it expires and the adapter below writes the new one back. All
-// reads and writes go through the same row-level security as the web app.
+// This file is only the command registry and argument parsing (node:util parseArgs). Commands live
+// in cli/commands/<name>.mjs and export `options` (parseArgs options) and `run(ctx, positionals, flags)`;
+// helpers live in cli/lib/. Today and Insights come from lib/core, so they exist exactly once.
 //
-// Run `intervous help` for the command list. Add --json to any read command for
-// machine-readable output.
+// Agent rules: never run `login`, never read session.json; on exit 2 ask Alberto to run
+// `intervous login` in his terminal; on exit 6 the v2 migration is missing.
+import { parseArgs } from 'node:util';
+import { configDir } from './lib/config.mjs';
+import { makeContext } from './lib/auth.mjs';
+import { CliError, EXIT, reportError, usage, wantJson } from './lib/output.mjs';
 
-import { createClient } from '@supabase/supabase-js';
-import fs from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+/**
+ * name -> [module, export or null, usage, summary]
+ * @type {Array<[string, string, string | null, string, string, string]>}
+ */
+const COMMANDS = [
+  ['login', 'login', null, 'login [--email E] [--otp]', 'sign in (terminal only; the password prompt is hidden)', 'Session'],
+  ['logout', 'logout', null, 'logout', 'forget the saved session', 'Session'],
+  ['whoami', 'whoami', null, 'whoami', 'who the CLI acts as', 'Session'],
+  ['doctor', 'doctor', null, 'doctor [--orphans]', 'read-only check: config, session, migration, bucket', 'Session'],
 
-const CONFIG_DIR = path.join(os.homedir(), '.config', 'intervous');
-const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json');
-const SESSION_FILE = path.join(CONFIG_DIR, 'session.json');
-const APP_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  ['find', 'find', null, 'find --url U | --company C [--role R]', 'duplicate check before building a CV', 'Applications'],
+  ['add', 'add', null, 'add <manifest.json> [--dry-run]', 'the whole application in one call (spec 6.3)', 'Applications'],
+  ['show', 'show', null, 'show <ref>', 'job, timeline, documents (signed URLs), fit, proof points, answers, contacts', 'Applications'],
+  ['list', 'list', null, 'list [--phase P,P] [--since DATE] [--group G]', 'every application, grouped as on the web', 'Applications'],
+  ['open', 'open', null, 'open <ref>', 'print the dossier link', 'Applications'],
 
-// ---------------------------------------------------------------------------
-// config + session storage
-// ---------------------------------------------------------------------------
+  ['sent', 'sent', null, 'sent <ref> [--on DATE] [--cv PDF]', 'it went out: applied event, sent date, the CV marked as sent', 'Timeline'],
+  ['log', 'log', null, 'log <ref> <kind> [--on DATE] [--at ISO] [--title T] [--body B] [--contact NAME]', 'add an event (reply, interview_scheduled, rejection, offer, ...)', 'Timeline'],
+  ['move', 'move', null, 'move <ref> <phase> [--on DATE] [--note T]', 'set the phase directly (a phase_change event)', 'Timeline'],
+  ['next', 'next', null, 'next <ref> "text" [--due DATE] | next <ref> --clear', 'the next action and its due date', 'Timeline'],
+  ['confirm', 'confirm', null, 'confirm <ref> <field...>', 'mark unconfirmed facts as confirmed', 'Timeline'],
+  ['feedback', 'feedback', null, 'feedback <ref> passed|interview --stage S|rejected|no_response|offer|withdrawn', 'old outcome shortcut, mapped onto log / move', 'Timeline'],
 
-function ensureDir() {
-  fs.mkdirSync(CONFIG_DIR, { recursive: true, mode: 0o700 });
-}
+  ['attach', 'attach', null, 'attach <ref> <file> --kind cv_pdf|cv_source|cover_letter|other [--submitted] [--label L]', 'upload a file to the application', 'Documents'],
+  ['jd', 'jd', null, 'jd <ref> <file.md> [--source-url U] [--captured-at ISO]', 'store the job description as captured', 'Documents'],
+  ['answer', 'answer', null, 'answer <ref> --question Q (--file F | --text T) [--limit N] [--submitted]', 'save an application answer', 'Documents'],
+  ['proof', 'proof', null, 'proof list | proof set <key> [--name N] [--metric M] [--status S] [--caveat C] [--fact k=v ...]', 'proof points and their true numbers', 'Documents'],
 
-function readJson(file, fallback) {
-  try {
-    return JSON.parse(fs.readFileSync(file, 'utf8'));
-  } catch {
-    return fallback;
-  }
-}
+  ['today', 'today', null, 'today', 'the same queue as /today', 'Queues'],
+  ['insights', 'insights', null, 'insights [--only actions] [--all] [--only-confirmed]', 'the same numbers as /insights, sample-size rule applied', 'Queues'],
+  ['import', 'import', null, 'import <history.json> --map <adopt.json> [--dry-run] [--only slug,slug] [--emit-fixture FILE]', 'the one-time history import (section 7)', 'Queues'],
 
-function writePrivate(file, obj) {
-  ensureDir();
-  fs.writeFileSync(file, JSON.stringify(obj, null, 2), { mode: 0o600 });
-  fs.chmodSync(file, 0o600);
-}
+  ['status', 'legacy', 'status', 'status', 'row counts per table', 'Debugging'],
+  ['jobs', 'legacy', 'jobs', 'jobs list|get <id>|add --company C --role R [--phase P]|update <id> --set k=v|delete <id> --yes', 'raw jobs rows', 'Debugging'],
+  ['companies', 'legacy', 'companies', 'companies list | get <id>', 'raw companies rows', 'Debugging'],
+  ['db', 'legacy', 'db', 'db select|insert|update|delete <table> [--where k=v] [--set k=v] [--data JSON] [--yes]', 'any table you can reach through RLS', 'Debugging'],
+  ['storage', 'legacy', 'storage', 'storage buckets | list|upload|download|url|remove <bucket> ...', 'raw storage access', 'Debugging'],
+  ['export', 'legacy', 'exportAll', 'export [--out file.json]', 'dump every table you can read', 'Debugging'],
+];
+const BY_NAME = new Map(COMMANDS.map((c) => [c[0], c]));
 
-// The URL and anon key are public (the browser bundle ships them). They are read
-// from the app's .env once and cached, so the CLI also works outside the repo.
-function loadConfig() {
-  const cached = readJson(CONFIG_FILE, null);
-  if (cached?.url && cached?.anonKey) return cached;
-  const envPath = path.join(APP_DIR, '.env');
-  let env = '';
-  try {
-    env = fs.readFileSync(envPath, 'utf8');
-  } catch {
-    fail(`No config in ${CONFIG_FILE} and no ${envPath} to read it from.`);
-  }
-  const get = (k) => env.match(new RegExp(`^${k}=(.*)$`, 'm'))?.[1]?.trim().replace(/^["']|["']$/g, '');
-  const cfg = { url: get('NEXT_PUBLIC_SUPABASE_URL'), anonKey: get('NEXT_PUBLIC_SUPABASE_ANON_KEY') };
-  if (!cfg.url || !cfg.anonKey) fail(`NEXT_PUBLIC_SUPABASE_URL / _ANON_KEY missing from ${envPath}.`);
-  writePrivate(CONFIG_FILE, cfg);
-  return cfg;
-}
-
-const fileStorage = {
-  getItem: (key) => readJson(SESSION_FILE, {})[key] ?? null,
-  setItem: (key, value) => {
-    const all = readJson(SESSION_FILE, {});
-    all[key] = value;
-    writePrivate(SESSION_FILE, all);
-  },
-  removeItem: (key) => {
-    const all = readJson(SESSION_FILE, {});
-    delete all[key];
-    writePrivate(SESSION_FILE, all);
-  },
+const GLOBAL_OPTIONS = {
+  json: { type: 'boolean' },
+  help: { type: 'boolean', short: 'h' },
 };
 
-function client() {
-  const { url, anonKey } = loadConfig();
-  return createClient(url, anonKey, {
-    auth: {
-      storage: fileStorage,
-      persistSession: true,
-      autoRefreshToken: false, // no background timers in a CLI; getSession() refreshes on demand
-      detectSessionInUrl: false,
-    },
-  });
+function help() {
+  const groups = [...new Set(COMMANDS.map((c) => c[5]))];
+  const lines = ['intervous: InterVous from the terminal, as your own user', ''];
+  for (const g of groups) {
+    lines.push(g);
+    for (const c of COMMANDS.filter((x) => x[5] === g)) lines.push(`  ${c[3]}`, `      ${c[4]}`);
+    lines.push('');
+  }
+  lines.push(
+    '<ref> is a slug, a unique slug prefix, or a numeric id. Dates are YYYY-MM-DD.',
+    'Add --json for machine-readable output (automatic when stdout is not a terminal): read commands',
+    'print their data, write commands print {"ok": true, "data": ...}, errors go to stderr as',
+    '{"ok": false, "error": {"code", "message", "hint"}}.',
+    'Exit codes: 0 ok, 1 usage or validation, 2 not logged in, 3 not found, 4 conflict, 5 network/server, 6 migration missing.',
+    `Config and session live in ${configDir()} (override with INTERVOUS_CONFIG_DIR; INTERVOUS_URL and INTERVOUS_ANON_KEY override the project).`,
+  );
+  return lines.join('\n');
 }
 
-async function requireUser(sb) {
-  const { data, error } = await sb.auth.getSession();
-  if (error || !data.session) fail('Not logged in. Run: intervous login');
-  return data.session.user;
+async function loadCommand(entry) {
+  const [name, file, exp] = entry;
+  let mod;
+  try {
+    mod = await import(`./commands/${file}.mjs`);
+  } catch (e) {
+    const err = /** @type {NodeJS.ErrnoException & { url?: string }} */ (e);
+    if (name === 'import' && err.code === 'ERR_MODULE_NOT_FOUND' && String(err.url ?? err.message).includes('commands/import.mjs')) {
+      return {
+        options: null,
+        run() {
+          throw new CliError(EXIT.USAGE, 'intervous import is not built yet: it arrives with the history import (WP4).', { code: 'not_implemented', hint: 'Use `intervous add <manifest.json>` for one application.' });
+        },
+      };
+    }
+    throw e;
+  }
+  const cmd = exp ? mod[exp] : mod;
+  if (!cmd?.run) throw new Error(`cli/commands/${file}.mjs does not export run()`);
+  return cmd;
 }
 
-// ---------------------------------------------------------------------------
-// output helpers
-// ---------------------------------------------------------------------------
-
-function fail(msg, code = 1) {
-  process.stderr.write(`intervous: ${msg}\n`);
-  process.exit(code);
-}
-
-function out(obj, asJson) {
-  if (asJson) {
-    process.stdout.write(JSON.stringify(obj, null, 2) + '\n');
+async function main(argv) {
+  const [name, ...rest] = argv;
+  if (!name || name === 'help' || name === '--help' || name === '-h') {
+    const entry = rest[0] && BY_NAME.get(rest[0]);
+    console.log(entry ? `intervous ${entry[3]}\n  ${entry[4]}` : help());
     return;
   }
-  if (Array.isArray(obj)) return table(obj);
-  if (obj && typeof obj === 'object') {
-    const w = Math.max(...Object.keys(obj).map((k) => k.length));
-    for (const [k, v] of Object.entries(obj)) console.log(`${k.padEnd(w)}  ${fmt(v)}`);
+  const entry = BY_NAME.get(name);
+  if (!entry) throw usage(`Unknown command: ${name}`, 'Run `intervous help` for the list.');
+  const cmd = await loadCommand(entry);
+  let parsed;
+  try {
+    parsed = parseArgs({ args: rest, options: { ...GLOBAL_OPTIONS, ...(cmd.options ?? {}) }, allowPositionals: true, strict: cmd.options !== null });
+  } catch (e) {
+    throw usage(/** @type {Error} */ (e).message.replace(/\. To specify a positional argument.*$/s, ''), `Usage: intervous ${entry[3]}`);
+  }
+  const flags = parsed.values;
+  if (flags.help) {
+    console.log(`intervous ${entry[3]}\n  ${entry[4]}`);
     return;
   }
-  console.log(obj);
+  const ctx = makeContext({ json: wantJson(flags), flags, command: name });
+  await cmd.run(ctx, parsed.positionals, flags);
 }
 
-function fmt(v) {
-  if (v === null || v === undefined) return '';
-  if (typeof v === 'object') return JSON.stringify(v);
-  return String(v);
-}
-
-function table(rows) {
-  if (!rows.length) return console.log('(no rows)');
-  const cols = Object.keys(rows[0]);
-  const width = (c) => Math.min(40, Math.max(c.length, ...rows.map((r) => fmt(r[c]).length)));
-  const ws = cols.map(width);
-  const cell = (s, w) => (s.length > w ? s.slice(0, w - 1) + '…' : s.padEnd(w));
-  console.log(cols.map((c, i) => cell(c, ws[i])).join('  '));
-  console.log(ws.map((w) => '─'.repeat(w)).join('  '));
-  for (const r of rows) console.log(cols.map((c, i) => cell(fmt(r[c]), ws[i])).join('  '));
-  console.log(`\n${rows.length} row${rows.length === 1 ? '' : 's'}`);
-}
-
-// ---------------------------------------------------------------------------
-// argument parsing: positionals, --flag value, --flag=value, repeatable --set/--where
-// ---------------------------------------------------------------------------
-
-function parseArgs(argv) {
-  const pos = [];
-  const flags = {};
-  const multi = new Set(['set', 'where']);
-  for (let i = 0; i < argv.length; i++) {
-    const a = argv[i];
-    if (!a.startsWith('--')) {
-      pos.push(a);
-      continue;
-    }
-    let [k, v] = a.slice(2).split(/=(.*)/s, 2);
-    if (v === undefined) {
-      const next = argv[i + 1];
-      if (next !== undefined && !next.startsWith('--')) {
-        v = next;
-        i++;
-      } else v = true;
-    }
-    if (multi.has(k)) (flags[k] ??= []).push(v);
-    else flags[k] = v;
-  }
-  return { pos, flags };
-}
-
-// "field=value" sets a string; "field:=value" parses value as JSON (numbers,
-// booleans, null, arrays, objects).
-function pairs(list = []) {
-  const obj = {};
-  for (const item of list) {
-    const m = String(item).match(/^([^:=]+)(:?=)(.*)$/s);
-    if (!m) fail(`Expected field=value or field:=json, got "${item}"`);
-    const [, k, op, raw] = m;
-    if (op === ':=') {
-      try {
-        obj[k] = JSON.parse(raw);
-      } catch {
-        fail(`Invalid JSON for ${k}: ${raw}`);
-      }
-    } else obj[k] = raw;
-  }
-  return obj;
-}
-
-function dataFlag(flags) {
-  if (flags.file) {
-    try {
-      return JSON.parse(fs.readFileSync(flags.file, 'utf8'));
-    } catch (e) {
-      fail(`Cannot read JSON from ${flags.file}: ${e.message}`);
-    }
-  }
-  if (flags.data) {
-    try {
-      return JSON.parse(flags.data);
-    } catch (e) {
-      fail(`--data is not valid JSON: ${e.message}`);
-    }
-  }
-  if (flags.set) return pairs(flags.set);
-  fail('Provide --data <json>, --file <path> or --set field=value');
-}
-
-function applyWhere(q, where) {
-  for (const [k, v] of Object.entries(pairs(where))) q = v === null ? q.is(k, null) : q.eq(k, v);
-  return q;
-}
-
-// ---------------------------------------------------------------------------
-// hidden password prompt (raw mode, no echo)
-// ---------------------------------------------------------------------------
-
-function prompt(question) {
-  return new Promise((resolve) => {
-    process.stdout.write(question);
-    let buf = '';
-    process.stdin.setEncoding('utf8');
-    process.stdin.once('data', (d) => {
-      buf = String(d).replace(/\r?\n$/, '');
-      process.stdin.pause();
-      resolve(buf);
-    });
-    process.stdin.resume();
-  });
-}
-
-function hiddenPrompt(question) {
-  return new Promise((resolve) => {
-    const stdin = process.stdin;
-    if (!stdin.isTTY) fail('Password input needs an interactive terminal.');
-    process.stdout.write(question);
-    let pw = '';
-    stdin.setRawMode(true);
-    stdin.resume();
-    stdin.setEncoding('utf8');
-    const onData = (ch) => {
-      for (const c of ch) {
-        if (c === '\r' || c === '\n') {
-          stdin.setRawMode(false);
-          stdin.pause();
-          stdin.removeListener('data', onData);
-          process.stdout.write('\n');
-          return resolve(pw);
-        }
-        if (c === '\u0003') {
-          stdin.setRawMode(false);
-          process.stdout.write('\n');
-          process.exit(130);
-        }
-        if (c === '\u007f' || c === '\b') pw = pw.slice(0, -1);
-        else pw += c;
-      }
-    };
-    stdin.on('data', onData);
-  });
-}
-
-// ---------------------------------------------------------------------------
-// commands
-// ---------------------------------------------------------------------------
-
-const TABLES = ['jobs', 'companies', 'company_info', 'company_tags', 'company_tag_map', 'profiles'];
-
-async function cmdLogin(sb, flags) {
-  const email = flags.email && flags.email !== true ? flags.email : await prompt('Email: ');
-  if (flags.otp) {
-    const { error } = await sb.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });
-    if (error) fail(error.message);
-    const token = await prompt('Code from the email: ');
-    const { data, error: e2 } = await sb.auth.verifyOtp({ email, token: token.trim(), type: 'email' });
-    if (e2) fail(e2.message);
-    return console.log(`Logged in as ${data.user.email}`);
-  }
-  const password = await hiddenPrompt('Password (hidden): ');
-  const { data, error } = await sb.auth.signInWithPassword({ email, password });
-  if (error) fail(error.message);
-  console.log(`Logged in as ${data.user.email}. Session saved to ${SESSION_FILE}`);
-}
-
-async function cmdLogout(sb) {
-  await sb.auth.signOut({ scope: 'local' });
-  try {
-    fs.unlinkSync(SESSION_FILE);
-  } catch {}
-  console.log('Logged out.');
-}
-
-async function cmdWhoami(sb, flags) {
-  const user = await requireUser(sb);
-  const { data: s } = await sb.auth.getSession();
-  out(
-    {
-      email: user.email,
-      user_id: user.id,
-      session_expires: new Date(s.session.expires_at * 1000).toISOString(),
-    },
-    flags.json,
-  );
-}
-
-async function cmdStatus(sb, flags) {
-  const user = await requireUser(sb);
-  const counts = {};
-  for (const t of TABLES) {
-    const { count, error } = await sb.from(t).select('*', { count: 'exact', head: true });
-    counts[t] = error ? `error: ${error.message}` : count;
-  }
-  out({ email: user.email, ...counts }, flags.json);
-}
-
-async function cmdJobs(sb, sub, pos, flags) {
-  const user = await requireUser(sb);
-  if (!sub || sub === 'list') {
-    let q = sb.from('jobs').select('*').eq('user_id', user.id).order('application_date', { ascending: false });
-    if (flags.status) q = q.eq('status', flags.status);
-    if (flags.limit) q = q.limit(Number(flags.limit));
-    const { data, error } = await q;
-    if (error) fail(error.message);
-    const rows = flags.json ? data : data.map(({ id, application_date, company_name, role, location, status, stage }) => ({ id, date: application_date, company: company_name, role, location, status, stage }));
-    return out(rows, flags.json);
-  }
-  if (sub === 'get') {
-    const { data, error } = await sb.from('jobs').select('*').eq('id', pos[0]).single();
-    if (error) fail(error.message);
-    return out(data, flags.json);
-  }
-  if (sub === 'add') {
-    if (!flags.company || !flags.role) fail('jobs add needs --company and --role');
-    const row = {
-      user_id: user.id,
-      company_name: flags.company,
-      role: flags.role,
-      location: flags.location ?? '',
-      url: flags.url ?? '',
-      application_date: flags.date ?? new Date().toISOString().slice(0, 10),
-      status: flags.status ?? 'Applied',
-      stage: flags.stage ?? '',
-      ...pairs(flags.set),
-    };
-    const { data, error } = await sb.from('jobs').insert([row]).select().single();
-    if (error) fail(error.message);
-    return out(data, flags.json);
-  }
-  if (sub === 'update') {
-    const patch = dataFlag(flags);
-    const { data, error } = await sb.from('jobs').update(patch).eq('id', pos[0]).eq('user_id', user.id).select().single();
-    if (error) fail(error.message);
-    return out(data, flags.json);
-  }
-  if (sub === 'delete') {
-    if (!flags.yes) fail('Refusing to delete without --yes');
-    const { error } = await sb.from('jobs').delete().eq('id', pos[0]).eq('user_id', user.id);
-    if (error) fail(error.message);
-    return console.log(`Deleted job ${pos[0]}`);
-  }
-  fail(`Unknown jobs subcommand: ${sub}`);
-}
-
-async function cmdCompanies(sb, sub, pos, flags) {
-  await requireUser(sb);
-  if (!sub || sub === 'list') {
-    const { data, error } = await sb.from('companies').select('id, name, website').order('name');
-    if (error) fail(error.message);
-    return out(data, flags.json);
-  }
-  if (sub === 'get') {
-    const { data, error } = await sb.from('companies').select('*, company_info(*), company_tag_map(company_tags(name))').eq('id', pos[0]).single();
-    if (error) fail(error.message);
-    return out(data, flags.json);
-  }
-  fail(`Unknown companies subcommand: ${sub}`);
-}
-
-async function cmdDb(sb, sub, pos, flags) {
-  await requireUser(sb);
-  const tableName = pos[0];
-  if (!tableName) fail('db <select|insert|update|delete> <table> ...');
-  if (sub === 'select') {
-    let q = sb.from(tableName).select(flags.columns ?? '*');
-    q = applyWhere(q, flags.where);
-    if (flags.order) {
-      const [col, dir] = String(flags.order).split('.');
-      q = q.order(col, { ascending: dir !== 'desc' });
-    }
-    if (flags.limit) q = q.limit(Number(flags.limit));
-    const { data, error } = await q;
-    if (error) fail(error.message);
-    return out(data, flags.json);
-  }
-  if (sub === 'insert') {
-    const rows = dataFlag(flags);
-    const { data, error } = await sb.from(tableName).insert(Array.isArray(rows) ? rows : [rows]).select();
-    if (error) fail(error.message);
-    return out(data, flags.json);
-  }
-  if (sub === 'update') {
-    if (!flags.where) fail('db update needs at least one --where');
-    let q = sb.from(tableName).update(dataFlag(flags));
-    q = applyWhere(q, flags.where);
-    const { data, error } = await q.select();
-    if (error) fail(error.message);
-    return out(data, flags.json);
-  }
-  if (sub === 'delete') {
-    if (!flags.where) fail('db delete needs at least one --where');
-    if (!flags.yes) fail('Refusing to delete without --yes');
-    let q = sb.from(tableName).delete();
-    q = applyWhere(q, flags.where);
-    const { data, error } = await q.select();
-    if (error) fail(error.message);
-    return out({ deleted: data.length }, flags.json);
-  }
-  fail(`Unknown db subcommand: ${sub}`);
-}
-
-async function cmdStorage(sb, sub, pos, flags) {
-  await requireUser(sb);
-  const [bucket, a, b] = pos;
-  if (sub === 'buckets') {
-    const { data, error } = await sb.storage.listBuckets();
-    if (error) fail(error.message);
-    return out(data.map(({ id, public: pub }) => ({ id, public: pub })), flags.json);
-  }
-  if (!bucket) fail('storage <list|upload|download|url|remove> <bucket> ...');
-  if (sub === 'list') {
-    const { data, error } = await sb.storage.from(bucket).list(a ?? '', { limit: 1000 });
-    if (error) fail(error.message);
-    return out(data.map(({ name, metadata, updated_at }) => ({ name, size: metadata?.size ?? '', updated_at })), flags.json);
-  }
-  if (sub === 'upload') {
-    if (!a || !b) fail('storage upload <bucket> <local-file> <remote-path> [--upsert]');
-    const body = fs.readFileSync(a);
-    const contentType = a.endsWith('.pdf') ? 'application/pdf' : a.endsWith('.json') ? 'application/json' : a.endsWith('.md') ? 'text/markdown' : 'application/octet-stream';
-    const { data, error } = await sb.storage.from(bucket).upload(b, body, { contentType, upsert: Boolean(flags.upsert) });
-    if (error) fail(error.message);
-    return out(data, flags.json);
-  }
-  if (sub === 'download') {
-    if (!a || !b) fail('storage download <bucket> <remote-path> <local-file>');
-    const { data, error } = await sb.storage.from(bucket).download(a);
-    if (error) fail(error.message);
-    fs.writeFileSync(b, Buffer.from(await data.arrayBuffer()));
-    return console.log(`Saved ${b}`);
-  }
-  if (sub === 'url') {
-    const { data, error } = await sb.storage.from(bucket).createSignedUrl(a, Number(flags.expires ?? 3600));
-    if (error) fail(error.message);
-    return out(data, flags.json);
-  }
-  if (sub === 'remove') {
-    if (!flags.yes) fail('Refusing to remove without --yes');
-    const { data, error } = await sb.storage.from(bucket).remove([a]);
-    if (error) fail(error.message);
-    return out(data, flags.json);
-  }
-  fail(`Unknown storage subcommand: ${sub}`);
-}
-
-// ---------------------------------------------------------------------------
-// dossier: schema detection, import, feedback loop, timeline
-// ---------------------------------------------------------------------------
-
-const DOCS_BUCKET = 'application-docs';
-
-// The dossier columns, job_events and the private bucket come from
-// supabase/migrations/20261017_application_dossier.sql. Commands degrade to the base
-// jobs columns until it has been run.
-async function schemaState(sb) {
-  const cols = await sb.from('jobs').select('external_key, screening, cv_path').limit(1);
-  const events = await sb.from('job_events').select('id').limit(1);
-  // list() on a missing bucket can come back empty without an error, so probe with a
-  // tiny write into the user's own folder and remove it again.
-  const { data: s } = await sb.auth.getSession();
-  const probe = `${s.session.user.id}/.probe`;
-  const up = await sb.storage.from(DOCS_BUCKET).upload(probe, new Blob(['ok']), { upsert: true });
-  if (!up.error) await sb.storage.from(DOCS_BUCKET).remove([probe]);
-  return { dossier: !cols.error, events: !events.error, bucket: !up.error };
-}
-
-async function cmdSchema(sb, flags) {
-  await requireUser(sb);
-  const s = await schemaState(sb);
-  out(
-    {
-      dossier_columns: s.dossier ? 'present' : 'missing',
-      job_events: s.events ? 'present' : 'missing',
-      [`bucket ${DOCS_BUCKET}`]: s.bucket ? 'present' : 'missing',
-      migration: s.dossier && s.events && s.bucket ? 'applied' : 'run supabase/migrations/20261017_application_dossier.sql in the SQL editor',
-    },
-    flags.json,
-  );
-}
-
-// history.json status -> (status, stage, screening) in InterVous vocabulary
-const STATUS_MAP = {
-  applied: ['Active', 'Screening', 'pending'],
-  draft: ['Active', 'Screening', 'pending'],
-  screening: ['Active', 'Screening', 'pending'],
-  interviewing: ['Active', 'Video Interview', 'passed'],
-  offer: ['Active', 'Offer', 'passed'],
-  rejected: ['Inactive', 'Screening', 'rejected'],
-  withdrawn: ['Inactive', 'Screening', 'withdrawn'],
-  not_applied: ['Not Applied', '-', 'pending'],
-};
-
-async function findJob(sb, userId, ref) {
-  if (/^\d+$/.test(String(ref))) {
-    const { data, error } = await sb.from('jobs').select('*').eq('id', ref).eq('user_id', userId).single();
-    if (error) fail(`No job with id ${ref}`);
-    return data;
-  }
-  const byKey = await sb.from('jobs').select('*').eq('user_id', userId).eq('external_key', ref);
-  if (!byKey.error && byKey.data?.length === 1) return byKey.data[0];
-  const { data, error } = await sb.from('jobs').select('*').eq('user_id', userId).or(`company_name.ilike.%${ref}%,role.ilike.%${ref}%`);
-  if (error) fail(error.message);
-  if (data.length === 1) return data[0];
-  if (!data.length) fail(`No job matches "${ref}"`);
-  fail(`"${ref}" matches ${data.length} jobs: ${data.map((j) => `${j.id} ${j.company_name} / ${j.role}`).join('; ')}. Use the id.`);
-}
-
-async function cmdImport(sb, pos, flags) {
-  const user = await requireUser(sb);
-  const file = pos[0];
-  if (!file) fail('import <file.json> [--include-not-applied] [--dry-run]');
-  const raw = JSON.parse(fs.readFileSync(file, 'utf8'));
-  const records = Array.isArray(raw) ? raw : raw.applications;
-  const state = await schemaState(sb);
-  const { data: existing, error } = await sb.from('jobs').select('*').eq('user_id', user.id);
-  if (error) fail(error.message);
-  const norm = (s) => String(s ?? '').toLowerCase().replace(/\s+/g, ' ').trim();
-  const report = [];
-
-  for (const r of records) {
-    if (r.status === 'not_applied' && !flags['include-not-applied']) {
-      report.push({ key: r.id, action: 'skipped (not applied)' });
-      continue;
-    }
-    const [status, stage, screening] = STATUS_MAP[r.status] ?? STATUS_MAP.applied;
-    const base = {
-      user_id: user.id,
-      company_name: r.company,
-      role: r.role,
-      location: r.location ?? '',
-      url: r.url ?? '',
-      application_date: r.date_applied ?? r.date_cv_built ?? null,
-      status,
-      stage,
-    };
-    const dossier = state.dossier
-      ? {
-          external_key: r.id,
-          source: r.channel ?? null,
-          work_mode: r.work_mode ?? null,
-          role_family: r.role_family ?? null,
-          cv_variant: r.cv_variant ?? null,
-          years_required: r.years_required ?? null,
-          visa_needed: r.visa_needed ?? null,
-          salary: r.salary ?? null,
-          closing_date: r.closing_date ?? null,
-          requirements_matched: r.requirements_matched ?? [],
-          gaps: r.gaps ?? [],
-          proof_points: r.proof_points_used ?? r.proof_points ?? [],
-          answers: r.answers ?? [],
-          contacts: r.contacts ?? [],
-          notes: [r.notes, r.status_evidence && `Status evidence: ${r.status_evidence}`].filter(Boolean).join('\n\n') || null,
-          jd_text: r.jd_text ?? null,
-          screening,
-        }
-      : {};
-    const match =
-      (state.dossier && existing.find((j) => j.external_key === r.id)) ||
-      existing.find((j) => norm(j.company_name) === norm(r.company) && norm(j.role) === norm(r.role));
-
-    if (flags['dry-run']) {
-      report.push({ key: r.id, action: match ? `would update ${match.id}` : 'would insert', status, stage });
-      continue;
-    }
-    let job;
-    if (match) {
-      // never overwrite progress he recorded in the app (status/stage) on an existing row
-      const { status: _s, stage: _st, ...rest } = base;
-      const res = await sb.from('jobs').update({ ...rest, ...dossier }).eq('id', match.id).select().single();
-      if (res.error) fail(`${r.id}: ${res.error.message}`);
-      job = res.data;
-      report.push({ key: r.id, id: job.id, action: 'updated' });
-    } else {
-      const res = await sb.from('jobs').insert([{ ...base, ...dossier }]).select().single();
-      if (res.error) fail(`${r.id}: ${res.error.message}`);
-      job = res.data;
-      existing.push(job);
-      report.push({ key: r.id, id: job.id, action: 'inserted' });
-    }
-
-    if (state.bucket && r.cv_pdf_path && fs.existsSync(r.cv_pdf_path)) {
-      const objectPath = `${user.id}/${r.id}/${path.basename(r.cv_pdf_path)}`;
-      const up = await sb.storage.from(DOCS_BUCKET).upload(objectPath, fs.readFileSync(r.cv_pdf_path), { contentType: 'application/pdf', upsert: true });
-      if (up.error) report.push({ key: r.id, action: `cv upload failed: ${up.error.message}` });
-      else if (state.dossier) await sb.from('jobs').update({ cv_path: objectPath }).eq('id', job.id);
-    }
-
-    if (state.events && Array.isArray(r.events) && r.events.length) {
-      const { data: have } = await sb.from('job_events').select('occurred_on, note').eq('job_id', job.id);
-      const seen = new Set((have ?? []).map((e) => `${e.occurred_on}|${e.note}`));
-      const rows = r.events
-        .filter((e) => e.date && e.event && !seen.has(`${e.date}|${e.event}`))
-        .map((e) => ({ job_id: job.id, user_id: user.id, occurred_on: e.date, kind: e.kind ?? 'note', note: e.event }));
-      if (rows.length) {
-        const ev = await sb.from('job_events').insert(rows);
-        if (ev.error) report.push({ key: r.id, action: `events failed: ${ev.error.message}` });
-      }
-    }
-  }
-  if (!state.dossier) report.push({ key: '-', action: 'dossier columns missing: imported base fields only; run the migration and import again to fill the rest' });
-  out(report, flags.json);
-}
-
-// Outcome vocabulary for the feedback loop. Each sets status/stage/screening and logs an event.
-const OUTCOMES = {
-  passed: { status: 'Active', stage: 'HR Interview', screening: 'passed' },
-  interview: { status: 'Active', screening: 'passed' },
-  offer: { status: 'Active', stage: 'Offer', screening: 'passed' },
-  rejected: { status: 'Inactive' },
-  no_response: { status: 'Inactive', screening: 'no_response' },
-  withdrawn: { status: 'Inactive', screening: 'withdrawn' },
-  reopen: { status: 'Active' },
-  note: {},
-};
-
-async function cmdFeedback(sb, pos, flags) {
-  const user = await requireUser(sb);
-  const [ref, outcome] = pos;
-  if (!ref || !OUTCOMES[outcome]) fail(`feedback <job id|key|company> <${Object.keys(OUTCOMES).join('|')}> [--stage S] [--note N] [--date YYYY-MM-DD]`);
-  if (outcome === 'interview' && !flags.stage) fail('feedback ... interview needs --stage (e.g. "Technical Interview")');
-  const job = await findJob(sb, user.id, ref);
-  const state = await schemaState(sb);
-  const o = OUTCOMES[outcome];
-  const patch = {};
-  if (o.status) patch.status = o.status;
-  if (flags.stage || o.stage) patch.stage = flags.stage || o.stage;
-  if (state.dossier) {
-    // a rejection after passing the screen keeps "passed": the CV did its job
-    if (outcome === 'rejected') patch.screening = job.screening === 'passed' ? 'passed' : 'rejected';
-    else if (o.screening) patch.screening = o.screening;
-  }
-  if (Object.keys(patch).length) {
-    const { error } = await sb.from('jobs').update(patch).eq('id', job.id).eq('user_id', user.id);
-    if (error) fail(error.message);
-  }
-  if (state.events) {
-    const { error } = await sb.from('job_events').insert([
-      { job_id: job.id, user_id: user.id, occurred_on: flags.date ?? new Date().toISOString().slice(0, 10), kind: outcome, stage: patch.stage ?? job.stage ?? null, note: flags.note ?? null },
-    ]);
-    if (error) fail(error.message);
-  }
-  out({ job: `${job.id} ${job.company_name} / ${job.role}`, outcome, ...patch, event_logged: state.events }, flags.json);
-}
-
-async function cmdEvents(sb, pos, flags) {
-  const user = await requireUser(sb);
-  const job = await findJob(sb, user.id, pos[0]);
-  const { data, error } = await sb.from('job_events').select('occurred_on, kind, stage, note').eq('job_id', job.id).order('occurred_on');
-  if (error) fail(`${error.message} (has the migration been run?)`);
-  if (!flags.json) console.log(`${job.company_name} / ${job.role}\n`);
-  out(data, flags.json);
-}
-
-async function cmdExport(sb, flags) {
-  const user = await requireUser(sb);
-  const dump = { exported_at: new Date().toISOString(), user: { id: user.id, email: user.email } };
-  for (const t of TABLES) {
-    const { data, error } = await sb.from(t).select('*');
-    dump[t] = error ? { error: error.message } : data;
-  }
-  const text = JSON.stringify(dump, null, 2);
-  if (flags.out) {
-    fs.writeFileSync(flags.out, text);
-    return console.log(`Wrote ${flags.out}`);
-  }
-  process.stdout.write(text + '\n');
-}
-
-const HELP = `intervous — InterVous from the terminal, as your own user
-
-  login [--email E] [--otp]        sign in (password prompt is hidden; --otp emails a code)
-  logout                           forget the saved session
-  whoami [--json]                  who the CLI is acting as
-  status [--json]                  connection check + row counts per table
-
-  jobs list [--status S] [--limit N] [--json]
-  jobs get <id> [--json]
-  jobs add --company C --role R [--location L] [--url U] [--date YYYY-MM-DD]
-           [--status S] [--stage S] [--set field=value ...]
-  jobs update <id> --set field=value [--set field:=json ...]   (or --data '{...}')
-  jobs delete <id> --yes
-
-  companies list | get <id> [--json]
-
-  db select <table> [--where col=val ...] [--columns a,b] [--order col[.desc]] [--limit N]
-  db insert <table> --data '<json object|array>' | --file rows.json | --set k=v ...
-  db update <table> --where col=val --set k=v ...   (or --data '{...}')
-  db delete <table> --where col=val --yes
-
-  storage buckets
-  storage list <bucket> [prefix]
-  storage upload <bucket> <local-file> <remote-path> [--upsert]
-  storage download <bucket> <remote-path> <local-file>
-  storage url <bucket> <remote-path> [--expires seconds]
-  storage remove <bucket> <remote-path> --yes
-
-  export [--out file.json]         dump every table you can read
-
-  schema                           is the dossier migration applied?
-  import <file.json> [--dry-run] [--include-not-applied]
-                                   upsert applications (history.json format), upload CVs, add events
-  feedback <job> <passed|interview|offer|rejected|no_response|withdrawn|reopen|note>
-           [--stage S] [--note N] [--date YYYY-MM-DD]
-                                   record what happened; <job> = id, external key or company name
-  events <job> [--json]            the application's timeline
-
-  field=value sets a string; field:=json parses the value (numbers, true, null, [..], {..}).
-  Config and session live in ${CONFIG_DIR}.`;
-
-async function main() {
-  const [cmd, sub, ...rest] = process.argv.slice(2);
-  if (!cmd || cmd === 'help' || cmd === '--help' || cmd === '-h') return console.log(HELP);
-  // login/logout/whoami/status/export take flags directly after the command
-  const { pos, flags } = parseArgs(['jobs', 'companies', 'db', 'storage'].includes(cmd) ? rest : [sub, ...rest].filter((x) => x !== undefined));
-  const sb = client();
-  switch (cmd) {
-    case 'login':
-      return cmdLogin(sb, flags);
-    case 'logout':
-      return cmdLogout(sb);
-    case 'whoami':
-      return cmdWhoami(sb, flags);
-    case 'status':
-      return cmdStatus(sb, flags);
-    case 'jobs':
-      return cmdJobs(sb, sub, pos, flags);
-    case 'companies':
-      return cmdCompanies(sb, sub, pos, flags);
-    case 'db':
-      return cmdDb(sb, sub, pos, flags);
-    case 'storage':
-      return cmdStorage(sb, sub, pos, flags);
-    case 'export':
-      return cmdExport(sb, flags);
-    case 'schema':
-      return cmdSchema(sb, flags);
-    case 'import':
-      return cmdImport(sb, pos, flags);
-    case 'feedback':
-      return cmdFeedback(sb, pos, flags);
-    case 'events':
-      return cmdEvents(sb, pos, flags);
-    default:
-      fail(`Unknown command: ${cmd}. Run: intervous help`);
-  }
-}
-
-main().catch((e) => fail(e?.message ?? String(e)));
+const argv = process.argv.slice(2);
+main(argv).catch((e) => {
+  process.exitCode = reportError(e, argv.includes('--json') || !process.stdout.isTTY);
+});

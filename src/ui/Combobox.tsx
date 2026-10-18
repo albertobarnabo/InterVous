@@ -83,7 +83,7 @@ export function Combobox<T>({
         </ComboboxButton>
       </div>
       <ComboboxOptions
-        anchor={{ to: "bottom start", gap: 4 }}
+        anchor={{ to: "bottom start", gap: 4, padding: 8 }}
         transition
         className={cx(
           "z-30 max-h-72 w-(--input-width) min-w-56 overflow-auto rounded-md bg-surface p-1 shadow-2 ring-1 ring-line empty:invisible",

@@ -35,10 +35,17 @@ async function tavilyAnswer(
 
 export async function POST(req: Request) {
     try {
-        const { companyName, website } = await req.json();
+        let body: { companyName?: unknown; website?: unknown };
+        try {
+            body = await req.json();
+        } catch {
+            return NextResponse.json({ error: 'The request was not valid JSON.' }, { status: 400 });
+        }
+        const companyName = typeof body.companyName === 'string' ? body.companyName.trim().slice(0, 200) : '';
+        const website = typeof body.website === 'string' ? body.website.trim().slice(0, 300) : '';
 
         if (!companyName) {
-            return NextResponse.json({ error: 'Missing company name' }, { status: 400 });
+            return NextResponse.json({ error: 'Add the company name first.' }, { status: 400 });
         }
 
         // Tavily key is read server-side from the caller's account
@@ -49,7 +56,7 @@ export async function POST(req: Request) {
         const apiKey = auth.keys?.tavily;
         if (!apiKey) {
             return NextResponse.json(
-                { error: 'No Tavily API key configured. Add one in Configs.' },
+                { error: 'No Tavily API key is saved. Add one in Settings → API keys.' },
                 { status: 400 }
             );
         }
@@ -76,11 +83,11 @@ export async function POST(req: Request) {
     } catch (err) {
         if (err instanceof Error && err.message === 'INVALID_KEY') {
             return NextResponse.json(
-                { error: 'Tavily rejected the API key. Check it in Configs.' },
+                { error: 'Tavily rejected the API key. Check it in Settings → API keys.' },
                 { status: 401 }
             );
         }
-        console.error('Company research failed:', err);
+        console.error('Company research failed:', err instanceof Error ? err.message : typeof err);
         return NextResponse.json(
             { error: 'Company research failed. Try again.' },
             { status: 500 }

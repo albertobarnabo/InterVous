@@ -132,6 +132,11 @@ export function ConfirmDialog({ open, onClose, onConfirm, title, body, confirmLa
     setTyped("");
     onClose();
   };
+  const confirm = async () => {
+    if (!ok || loading) return;
+    await onConfirm();
+    setTyped("");
+  };
   return (
     <Dialog
       open={open}
@@ -148,10 +153,7 @@ export function ConfirmDialog({ open, onClose, onConfirm, title, body, confirmLa
             variant="danger"
             disabled={!ok}
             loading={loading}
-            onClick={async () => {
-              await onConfirm();
-              setTyped("");
-            }}
+            onClick={() => void confirm()}
           >
             {confirmLabel}
           </Button>
@@ -164,11 +166,20 @@ export function ConfirmDialog({ open, onClose, onConfirm, title, body, confirmLa
           className="mt-4"
           onSubmit={(e) => {
             e.preventDefault();
-            if (ok) void onConfirm();
+            void confirm();
           }}
         >
           <Field label={<>Type <span className="font-semibold">{typeToConfirm}</span> to confirm</>}>
-            <Input value={typed} onChange={(e) => setTyped(e.target.value)} autoComplete="off" autoFocus />
+            {/* data-autofocus: Headless UI's focus trap puts the first focus here when the dialog opens */}
+            <Input
+              value={typed}
+              onChange={(e) => setTyped(e.target.value)}
+              autoComplete="off"
+              autoCapitalize="off"
+              spellCheck={false}
+              autoFocus
+              data-autofocus
+            />
           </Field>
         </form>
       ) : null}

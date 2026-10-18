@@ -38,7 +38,7 @@
   --danger: #A3302A;
   --danger-soft: #F8E6E4;
 
-  /* phase pills: text on tint (draft, applied, screening, interviewing, offer, rejected, closed) */
+  /* phase pills: text on tint. Names follow phaseTokens() in lib/core/phases.mjs; values must equal PHASE_COLORS there. */
   --phase-draft-fg: #5B5648;
   --phase-draft-bg: #EEECE6;
   --phase-applied-fg: #2F4FA8;
@@ -51,8 +51,12 @@
   --phase-offer-bg: #E6F2DF;
   --phase-rejected-fg: #A3302A;
   --phase-rejected-bg: #F8E6E4;
-  --phase-closed-fg: #6E695E;
-  --phase-closed-bg: #EFEDE7;
+  --phase-no-reply-fg: #6E695E;
+  --phase-no-reply-bg: #EFEDE7;
+  --phase-withdrawn-fg: #6E695E;
+  --phase-withdrawn-bg: #EFEDE7;
+  --phase-skipped-fg: #6E695E;
+  --phase-skipped-bg: #EFEDE7;
   --caution-fg: #8A5A00;
   --caution-bg: #FBF0D9;
 
@@ -90,8 +94,12 @@
   --phase-offer-bg: #1D2E18;
   --phase-rejected-fg: #F2A49D;
   --phase-rejected-bg: #3A1F1C;
-  --phase-closed-fg: #B5B0A4;
-  --phase-closed-bg: #2A2822;
+  --phase-no-reply-fg: #B5B0A4;
+  --phase-no-reply-bg: #2A2822;
+  --phase-withdrawn-fg: #B5B0A4;
+  --phase-withdrawn-bg: #2A2822;
+  --phase-skipped-fg: #B5B0A4;
+  --phase-skipped-bg: #2A2822;
   --caution-fg: #F0C46A;
   --caution-bg: #3A2E12;
 
@@ -129,8 +137,12 @@
     --phase-offer-bg: #1D2E18;
     --phase-rejected-fg: #F2A49D;
     --phase-rejected-bg: #3A1F1C;
-    --phase-closed-fg: #B5B0A4;
-    --phase-closed-bg: #2A2822;
+    --phase-no-reply-fg: #B5B0A4;
+    --phase-no-reply-bg: #2A2822;
+    --phase-withdrawn-fg: #B5B0A4;
+    --phase-withdrawn-bg: #2A2822;
+    --phase-skipped-fg: #B5B0A4;
+    --phase-skipped-bg: #2A2822;
     --caution-fg: #F0C46A;
     --caution-bg: #3A2E12;
 
@@ -189,8 +201,12 @@
   --color-phase-offer-soft: var(--phase-offer-bg);
   --color-phase-rejected: var(--phase-rejected-fg);
   --color-phase-rejected-soft: var(--phase-rejected-bg);
-  --color-phase-closed: var(--phase-closed-fg);
-  --color-phase-closed-soft: var(--phase-closed-bg);
+  --color-phase-no-reply: var(--phase-no-reply-fg);
+  --color-phase-no-reply-soft: var(--phase-no-reply-bg);
+  --color-phase-withdrawn: var(--phase-withdrawn-fg);
+  --color-phase-withdrawn-soft: var(--phase-withdrawn-bg);
+  --color-phase-skipped: var(--phase-skipped-fg);
+  --color-phase-skipped-soft: var(--phase-skipped-bg);
 
   --radius-sm: var(--r-sm);
   --radius-md: var(--r-md);

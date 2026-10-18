@@ -38,11 +38,12 @@ const itemClass =
 
 /** Headless UI Menu. Defaults to a "⋯" icon trigger. */
 export function Menu({ items, label = "More actions", trigger, anchor = "bottom end", className }: MenuProps) {
+  const withIcons = items.some((it) => it !== "separator" && it.icon);
   return (
     <HMenu>
       <MenuButton as={Fragment}>{trigger ?? <IconButton label={label} icon={MoreHorizontal} />}</MenuButton>
       <MenuItems
-        anchor={{ to: anchor, gap: 4 }}
+        anchor={{ to: anchor, gap: 4, padding: 8 }}
         transition
         modal={false}
         className={cx(
@@ -56,7 +57,12 @@ export function Menu({ items, label = "More actions", trigger, anchor = "bottom 
           const Icon = it.icon;
           const content = (
             <>
-              {Icon ? <Icon aria-hidden size={16} strokeWidth={1.75} className={it.danger ? "text-danger" : "text-ink-3"} /> : null}
+              {Icon ? (
+                <Icon aria-hidden size={16} strokeWidth={1.75} className={cx("shrink-0", it.danger ? "text-danger" : "text-ink-3")} />
+              ) : withIcons ? (
+                // the icon slot, so labels line up when other items have an icon
+                <span aria-hidden className="size-4 shrink-0" />
+              ) : null}
               <span className="flex-1">{it.label}</span>
               {it.hint ? <span className="font-mono text-caption text-ink-3">{it.hint}</span> : null}
             </>

@@ -25,7 +25,7 @@ export function Callout({ tone = "caution", title, children, icon, action, class
       <Icon aria-hidden size={18} strokeWidth={1.75} className="mt-0.5 shrink-0" />
       <div className="min-w-0 flex-1">
         {title ? <p className="text-small font-semibold">{title}</p> : null}
-        <div className={cx("text-small text-ink", title && "mt-1")}>{children}</div>
+        <div className={cx("text-small text-ink", title ? "mt-1" : null)}>{children}</div>
         {action ? <div className="mt-3">{action}</div> : null}
       </div>
     </div>
