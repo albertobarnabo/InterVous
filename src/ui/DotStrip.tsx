@@ -5,7 +5,13 @@ import Link from "next/link";
 import { cx } from "./cx";
 
 export type DotState = "yes" | "waiting" | "no" | "recent" | "unconfirmed";
-export type DotItem = { state: DotState; label: string; href?: string };
+export type DotItem = {
+  state: DotState;
+  label: string;
+  href?: string;
+  /** The facts behind this dot are not confirmed yet: it is drawn hollow, in its state's colour. */
+  hollow?: boolean;
+};
 
 export type DotStripProps = {
   items: DotItem[];
@@ -23,7 +29,9 @@ export const DOT_STATE_LABEL: Record<DotState, string> = {
   unconfirmed: "Unconfirmed",
 };
 
-function dotStyle(state: DotState): string {
+function dotStyle(state: DotState, hollow?: boolean): string {
+  if (hollow && state === "yes") return "bg-transparent ring-[1.5px] ring-inset ring-accent";
+  if (hollow && state === "no") return "bg-transparent ring-[1.5px] ring-inset ring-ink-3";
   switch (state) {
     case "yes":
       return "bg-accent";
@@ -57,14 +65,14 @@ export function DotStrip({ items, legend, className, ...aria }: DotStripProps) {
           const dot = (
             <motion.span
               aria-hidden
-              className={cx("block size-3 rounded-full", dotStyle(it.state))}
+              className={cx("block size-3 rounded-full", dotStyle(it.state, it.hollow))}
               initial={reduce ? false : { opacity: 0, scale: 0.6 }}
               whileInView={{ opacity: 1, scale: 1 }}
               viewport={{ once: true }}
               transition={{ duration: 0.12, delay: reduce ? 0 : i * 0.03, ease: "easeOut" }}
             />
           );
-          const text = `${it.label}: ${DOT_STATE_LABEL[it.state].toLowerCase()}`;
+          const text = `${it.label}: ${DOT_STATE_LABEL[it.state].toLowerCase()}${it.hollow ? " (not confirmed)" : ""}`;
           return (
             <li key={`${it.label}-${i}`} className="flex">
               {it.href ? (
@@ -90,6 +98,12 @@ export function DotStrip({ items, legend, className, ...aria }: DotStripProps) {
                 {DOT_STATE_LABEL[s]} <span className="iv-num">{counts[s]}</span>
               </li>
             ))}
+          {items.some((it) => it.hollow) ? (
+            <li className="flex items-center gap-1.5">
+              <span aria-hidden className="block size-2.5 rounded-full ring-[1.5px] ring-inset ring-ink-3" />
+              Hollow: details not confirmed
+            </li>
+          ) : null}
         </ul>
       ) : null}
     </div>

@@ -17,6 +17,7 @@ export function RangeBar({ low, high, point, className, showLabels = true }: Ran
   const lo = Math.max(0, Math.min(1, low));
   const hi = Math.max(lo, Math.min(1, high));
   const pt = Math.max(0, Math.min(1, point));
+  const mid = (lo + hi) / 2;
   return (
     <div className={cx("w-full", className)}>
       <div
@@ -35,11 +36,16 @@ export function RangeBar({ low, high, point, className, showLabels = true }: Ran
       </div>
       {showLabels ? (
         <div className="relative mt-1 h-[18px] text-caption font-normal text-ink-3">
-          <span className="iv-num absolute left-0">0%</span>
-          <span className="iv-num absolute -translate-x-1/2 text-ink-2" style={{ left: `${((lo + hi) / 2) * 100}%` }}>
+          {/* The range label wins near an end: it is the reading, the ends are only the scale. */}
+          {mid >= 0.2 ? <span className="iv-num absolute left-0">0%</span> : null}
+          <span
+            className="iv-num absolute whitespace-nowrap text-ink-2"
+            // Sliding by its own width in step with its position keeps the label inside the track.
+            style={{ left: `${mid * 100}%`, transform: `translateX(-${mid * 100}%)` }}
+          >
             {pct(lo)}–{pct(hi)}
           </span>
-          <span className="iv-num absolute right-0">100%</span>
+          {mid <= 0.8 ? <span className="iv-num absolute right-0">100%</span> : null}
         </div>
       ) : null}
     </div>

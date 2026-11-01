@@ -4,9 +4,10 @@
 //   2 "Do this now": at most 3 cards, one plain sentence and one button each
 //   3 four status tiles, each a link to the filtered Applications list
 //   4 "What we've learned so far": at most 3 plain sentences
-//   5 "How InterVous works": the three steps, and Add a job
-// Every sentence and number comes from lib/core/home.mjs (buildHome). This file renders and wires
-// the buttons to lib/data writes (each with Undo). "Not now" lives in localStorage (dismissed.ts).
+//   5 "Your search in numbers": the analytics (Analytics.tsx)
+//   6 "How InterVous works": the three steps, and Add a job
+// Every sentence and number comes from lib/core (buildHome, computeAnalytics). This file renders and
+// wires the buttons to lib/data writes (each with Undo). "Not now" lives in localStorage (dismissed.ts).
 import { CheckCircle2, FileText, Hourglass, Lightbulb, ListChecks, MessageSquareReply, Plus, RotateCw, Send, Target, X, type LucideIcon } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
 import { useAuth } from "../../../contexts/AuthContext";
@@ -30,6 +31,7 @@ import {
 import { SentDialog, UpdateDialog, type DialogTarget } from "@/features/applications/UpdateDialog";
 import { useUpdates } from "@/features/applications/updates";
 import { copyText, followUpLine } from "./actions";
+import { Analytics } from "./Analytics";
 import { ConfirmFlow } from "./ConfirmFlow";
 import { FOREVER, snoozeUntil, SNOOZE_DAYS, useDismissed } from "./dismissed";
 import { useCoreInput } from "./useCoreInput";
@@ -134,7 +136,7 @@ export function HomeView() {
       </Frame>
     );
   }
-  if (!home || !today || !core.raw) return <Loading />;
+  if (!home || !today || !core.raw || !core.input) return <Loading />;
 
   const apps = core.raw.apps;
   const target = (a: { appId: number; company: string; role: string; phase: string }): DialogTarget => ({
@@ -338,7 +340,10 @@ export function HomeView() {
         </GlassCard>
       </Section>
 
-      {/* 5 How it works */}
+      {/* 5 The analytics */}
+      <Analytics input={core.input} />
+
+      {/* 6 How it works */}
       <Section id="how-it-works" title="How InterVous works">
         <GlassCard padding="md" className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
           <Steps

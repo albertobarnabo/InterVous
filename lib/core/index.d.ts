@@ -767,3 +767,82 @@ export interface HomeResult {
   learned: Array<{ id: string; text: string }>;
 }
 export function buildHome(input: CoreInput, opts?: HomeOptions): HomeResult;
+
+// ===========================================================================
+// analytics.mjs ("Your search in numbers" on /home)
+// ===========================================================================
+
+export const TIMELINE_MAX_WEEKS: number;
+export const TIMELINE_MIN_WEEKS: number;
+export const WHERE_MAX_ROWS: number;
+
+export interface AnalyticsOptions {
+  /** 'campaign' (default): rows since settings.campaign_start; 'all': every row. */
+  window?: 'campaign' | 'all';
+}
+export type TimelineSeries = 'built' | 'sent' | 'replies' | 'interviews' | 'rejections' | 'offers';
+export interface TimelineBucket {
+  /** The Monday, or the first of the month. */
+  start: DateString;
+  /** Axis label: '24 Aug', 'Oct ’25'. */
+  tick: string;
+  /** 'Week of 24 Aug', 'October 2025'. */
+  title: string;
+  values: Record<TimelineSeries, number>;
+}
+export interface AnalyticsResult {
+  today: DateString;
+  window: 'campaign' | 'all';
+  /** False when no application is in this window. */
+  hasData: boolean;
+  scope: {
+    campaign: number;
+    all: number;
+    older: number;
+    /** '1 Aug 2026' */
+    since: string;
+    /** What the older records do to these numbers; null when there are none. */
+    note: string | null;
+    unconfirmed: number;
+    unconfirmedNote: string | null;
+  };
+  intro: string;
+  /** Plain counts. The page's one percentage is the reply rate (i2), with its range. */
+  totals: Array<{ id: 'sent' | 'replied' | 'interviews' | 'offers' | 'rejected' | 'no_reply'; label: string; count: number; detail: string | null; phase: Phase }>;
+  timeline: {
+    unit: 'week' | 'month';
+    buckets: TimelineBucket[];
+    totals: Record<TimelineSeries, number>;
+    undatedSent: number;
+    undatedOutcomes: number;
+    bookedInterviews: number;
+    /** Bookings on an application that closed first. */
+    neverHeld: number;
+    thisWeek: number;
+    /** weekly_target, on the weekly chart only. */
+    target: number | null;
+    paceLine: string;
+    cameBackLine: string;
+    hasCameBack: boolean;
+  };
+  status: Array<{ phase: Phase; count: number }>;
+  rejections: {
+    count: number;
+    beforeInterview: number;
+    afterInterview: number;
+    median: { count: number; allowed: boolean; values: number[]; value?: number };
+    answer: string;
+  };
+  /** I4's answer, counting the replies with no exact date too. */
+  replyTimeLine: string;
+  where: Array<{ id: string; label: string; rows: Array<{ key: string; label: string; sent: number; replied: Rate | null }> }>;
+  /** The comparison sentence: names the split it speaks about. */
+  whereLine: string;
+  i1: I1;
+  i2: I2;
+  i3: I3;
+  i4: I4;
+  i5: I5;
+  i8: I8;
+}
+export function computeAnalytics(input: CoreInput, opts?: AnalyticsOptions): AnalyticsResult;
