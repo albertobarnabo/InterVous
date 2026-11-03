@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "node scripts/contrast.mjs && next lint",
-    "test": "node --test --disable-warning=MODULE_TYPELESS_PACKAGE_JSON \"lib/core/**/*.test.mjs\" \"lib/backend/**/*.test.mjs\"",
+    "test": "node --test --disable-warning=MODULE_TYPELESS_PACKAGE_JSON \"lib/core/**/*.test.mjs\" \"lib/backend/**/*.test.mjs\" \"lib/data/**/*.test.mjs\"",
     "test:cli": "node --test \"cli/test/**/*.test.mjs\"",
     "check:contrast": "node scripts/contrast.mjs"
   },

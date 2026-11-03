@@ -1,14 +1,17 @@
 "use client";
 // One row of /applications: logo (or initials), company, role, the status in plain words, a short
-// fact ("Waiting 17 days"), and ONE button (Mark as sent / Update / Open). The whole row opens the
-// application page; the button sits above the row's link.
+// fact ("Waiting 17 days"), ONE button (Mark as sent / Update / Open), and a quiet delete that shows
+// on hover or focus (always on touch). The whole row opens the application page; both buttons sit
+// above the row's link.
+import { Trash2 } from "lucide-react";
 import Link from "next/link";
-import { Button, ButtonLink, CompanyMark, StatusPill, cx } from "@/ui";
+import { Button, ButtonLink, CompanyMark, IconButton, StatusPill, cx } from "@/ui";
 import type { AppItem } from "./model";
 
 export type RowHandlers = {
   onMarkSent: (item: AppItem) => void;
   onUpdate: (item: AppItem) => void;
+  onDelete: (item: AppItem) => void;
 };
 
 function RowButton({ item, h }: { item: AppItem; h: RowHandlers }) {
@@ -41,7 +44,7 @@ export function AppRow({ item, h }: { item: AppItem; h: RowHandlers }) {
     <div
       className={cx(
         "group relative grid items-center gap-x-4 gap-y-2 px-4 py-3.5 transition-colors duration-150 sm:px-5",
-        "grid-cols-[40px_minmax(0,1fr)_auto] md:grid-cols-[40px_minmax(0,1.4fr)_minmax(0,1fr)_8.5rem]",
+        "grid-cols-[40px_minmax(0,1fr)_auto] md:grid-cols-[40px_minmax(0,1.4fr)_minmax(0,1fr)_11rem]",
         "hover:bg-white/45 has-[a[data-row-link]:focus-visible]:bg-white/60",
         "has-[a[data-row-link]:focus-visible]:shadow-[inset_0_0_0_2px_var(--accent)]",
       )}
@@ -71,8 +74,16 @@ export function AppRow({ item, h }: { item: AppItem; h: RowHandlers }) {
         {item.detail ? <span className="iv-num text-small text-ink-2">{item.detail}</span> : null}
       </div>
 
-      <div className="relative z-10 col-start-3 row-span-2 row-start-1 self-center justify-self-end md:col-start-4 md:row-span-1">
+      {/* Stacked on phones, so the name keeps the width. */}
+      <div className="relative z-10 col-start-3 row-span-2 row-start-1 flex flex-col items-end gap-1 self-center justify-self-end md:col-start-4 md:row-span-1 md:flex-row md:items-center">
         <RowButton item={item} h={h} />
+        <IconButton
+          label={`Delete: ${item.company}, ${item.role}`}
+          icon={Trash2}
+          size="sm"
+          onClick={() => h.onDelete(item)}
+          className="text-ink-3 opacity-0 transition-opacity group-hover:opacity-100 hover:text-danger focus-visible:opacity-100 pointer-coarse:opacity-100"
+        />
       </div>
     </div>
   );

@@ -19,7 +19,7 @@ import {
   type StatusGroupId,
   type UserSettings as CoreSettings,
 } from "../../../lib/core";
-import type { Application, UserSettings } from "../../../lib/data";
+import type { Application, DeleteResult, UserSettings } from "../../../lib/data";
 
 export type { Phase, StatusGroupId };
 
@@ -134,6 +134,39 @@ const desc = (a: string | number | null, b: string | number | null) => {
   if (b == null) return -1;
   return a < b ? 1 : a > b ? -1 : 0;
 };
+
+// ── delete ──────────────────────────────────────────────────────────────────
+
+/** A note or a status change is no history worth asking about: an agent's found job has just a note. */
+const QUIET_EVENTS = new Set(["note", "phase_change", "skipped"]);
+
+/**
+ * Never sent, not in doubt, no CV, no answers and no real history: the jobs an agent found look like
+ * this, so the row can leave at once with an Undo. Anything else asks first. A stored cover letter on
+ * a row like this goes unnoticed, because job_overview does not expose it; the Undo still covers it.
+ */
+export function isDisposable(it: Pick<AppItem, "app" | "d">): boolean {
+  return (
+    !it.d.sent &&
+    !it.d.statusUnconfirmed &&
+    !it.app.has_cv &&
+    !it.d.cvBuiltOn &&
+    !it.app.answer_count &&
+    it.d.events.every((e) => QUIET_EVENTS.has(e.kind))
+  );
+}
+
+export function deleteWarning(it: Pick<AppItem, "company" | "role" | "d">): string {
+  const numbers = it.d.sent || it.d.cvBuiltOn ? " It also stops counting in your numbers." : "";
+  return `${it.company} · ${it.role}. Its history, CV and notes are deleted too.${numbers} This cannot be undone.`;
+}
+
+/** The application is gone but some of its files may not be: they are private and worth knowing about. */
+export function leftoverText({ filesLeft: n, filesUnchecked }: Pick<DeleteResult, "filesLeft" | "filesUnchecked">): string | null {
+  if (n) return `Deleted, but ${n} stored ${n === 1 ? "file" : "files"} could not be removed. "intervous doctor --orphans" lists them.`;
+  if (filesUnchecked) return `Deleted, but its stored files could not be checked. "intervous doctor --orphans" lists any left behind.`;
+  return null;
+}
 
 // ── filter ──────────────────────────────────────────────────────────────────
 

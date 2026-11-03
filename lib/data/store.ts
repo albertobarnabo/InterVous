@@ -24,6 +24,8 @@ type Entry = {
     listeners: Set<() => void>;
     inflight: Promise<void> | null;
     dirty: boolean;
+    /** Patched while a read was in flight, so that read may predate the patch. */
+    patched: boolean;
     stale: boolean;
     fetchedAt: number;
 };
@@ -39,8 +41,10 @@ function notify(e: Entry) {
 function run(e: Entry): Promise<void> {
     if (e.inflight) {
         e.dirty = true;
-        return e.inflight;
+        // The read in flight may predate the caller's write; the one after it cannot. Wait for that one.
+        return e.inflight.then(() => e.inflight ?? undefined);
     }
+    e.patched = false;
     const hasData = e.state.data !== undefined;
     e.state = { ...e.state, loading: !hasData, refreshing: hasData };
     notify(e);
@@ -48,11 +52,14 @@ function run(e: Entry): Promise<void> {
         .fetcher()
         .then(
             (data) => {
+                // It could undo the patch. The follow-up read replaces it.
+                if (e.patched) return;
                 e.state = { data, error: null, loading: false, refreshing: false };
                 e.fetchedAt = Date.now();
                 e.stale = false;
             },
             (err) => {
+                if (e.patched) return;
                 e.state = { ...e.state, error: toError(err), loading: false, refreshing: false };
             },
         )
@@ -70,18 +77,20 @@ function run(e: Entry): Promise<void> {
 function entry(key: string, fetcher: () => Promise<unknown>): Entry {
     let e = entries.get(key);
     if (!e) {
-        e = { state: IDLE, fetcher, listeners: new Set(), inflight: null, dirty: false, stale: true, fetchedAt: 0 };
+        e = { state: IDLE, fetcher, listeners: new Set(), inflight: null, dirty: false, patched: false, stale: true, fetchedAt: 0 };
         entries.set(key, e);
     }
     return e;
 }
 
-/** Refetch every resource that is on screen; mark the rest stale. Resolves when the visible ones are done. */
+/** Refetch every resource that is on screen; mark the rest stale. Resolves when the visible ones have read data from after this call. */
 export function invalidateAll(): Promise<void> {
     const pending: Promise<void>[] = [];
     for (const e of entries.values()) {
         e.stale = true;
         if (e.listeners.size) pending.push(run(e));
+        // Off screen too: the read in flight may predate the write, so another must follow it.
+        else if (e.inflight) e.dirty = true;
     }
     return Promise.all(pending).then(() => undefined);
 }
@@ -100,6 +109,10 @@ export function patchCached<T>(keyPrefix: string, update: (data: T) => T) {
     for (const [k, e] of entries) {
         if (!k.startsWith(keyPrefix) || e.state.data === undefined) continue;
         e.state = { ...e.state, data: update(e.state.data as T) };
+        if (e.inflight) {
+            e.patched = true;
+            e.dirty = true;
+        }
         notify(e);
     }
 }

@@ -105,6 +105,10 @@ Replies so far   ●○○○○○  1 of 6 old enough to judge  ·  4 too recen
   - "Unconfirmed" and "Visa" chips where they apply
 
   No essential control is hidden behind hover.
+- **Deleting a row.** A quiet trash button shows on hover or focus, and always on touch. Delete also lives on the dossier, so it is not an essential control of the row.
+  - A row that was never sent, is not in doubt, and has no CV, answers or real history (the jobs an agent found look like this) leaves at once. One toast offers Undo for every row deleted in the same run, also on ⌘Z; each delete restarts its 5-second window, and the whole batch is written when the window closes or the app moves to another page. Hiding the tab writes nothing, because the delete cannot be taken back. Closing or reloading the tab inside the window cancels the delete, after the browser asks. A row sent during the window stays.
+  - Any other row asks first, in a `ConfirmDialog`. Once the write starts it cannot be cancelled, so the dialog cannot be closed until it ends.
+  - The delete removes the job's stored files too, reading their paths before the cascade takes the rows that name them. Nothing records the delete: pushing the same manifest again creates the job again.
 - **Board.** The columns are Not sent | Sent | In process | Interviewing | Offer | Closed (n). Closed starts collapsed.
   - Drag uses `@dnd-kit`, with pointer, touch and keyboard support.
   - Every card also has a "Move to…" menu.

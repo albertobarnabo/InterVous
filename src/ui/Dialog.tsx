@@ -130,7 +130,9 @@ export type ConfirmDialogProps = {
 export function ConfirmDialog({ open, onClose, onConfirm, title, body, confirmLabel = "Delete", typeToConfirm, loading }: ConfirmDialogProps) {
   const [typed, setTyped] = useState("");
   const ok = !typeToConfirm || typed.trim() === typeToConfirm.trim();
+  // While the delete runs nothing can stop it, so nothing should look as if it did.
   const close = () => {
+    if (loading) return;
     setTyped("");
     onClose();
   };
@@ -148,7 +150,7 @@ export function ConfirmDialog({ open, onClose, onConfirm, title, body, confirmLa
       hideClose
       footer={
         <>
-          <Button variant="secondary" onClick={close}>
+          <Button variant="secondary" onClick={close} disabled={loading}>
             Cancel
           </Button>
           <Button

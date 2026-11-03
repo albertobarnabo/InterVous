@@ -13,6 +13,7 @@ const GROUPS: Array<{ title: string; keys: Array<{ keys: string[]; sep?: string;
       { keys: ["/"], label: "Search this page" },
       { keys: ["?"], label: "This list" },
       { keys: ["Esc"], label: "Close a window" },
+      { keys: ["⌘Z"], label: "Undo deleting applications" },
     ],
   },
   {

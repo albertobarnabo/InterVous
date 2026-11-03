@@ -9,6 +9,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { deleteApplication, useApplication, useSettings, wasDeleted } from "../../../lib/data";
 import { Button, ButtonLink, CompanyMark, ConfirmDialog, Skeleton, cx, useToast } from "@/ui";
+import { leftoverText } from "../applications/model";
 import { CompanyPicker } from "@/app/(app)/companies/_components/CompanyPicker";
 import { LogoDialog } from "@/app/(app)/companies/_components/LogoDialog";
 import { Answers } from "./Answers";
@@ -161,7 +162,6 @@ function Summary({ model }: { model: DossierModel }) {
 }
 
 function DeleteApplication({ model }: { model: DossierModel }) {
-  const router = useRouter();
   const toast = useToast();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -180,10 +180,9 @@ function DeleteApplication({ model }: { model: DossierModel }) {
         onConfirm={async () => {
           setBusy(true);
           try {
-            await deleteApplication(model.app.id);
-            toast.show({ text: "Application deleted." });
+            const leftover = leftoverText(await deleteApplication(model.app.id));
+            toast.show(leftover ? { kind: "error", text: leftover } : { text: "Application deleted." });
             setOpen(false);
-            router.replace("/applications");
           } catch (e) {
             toast.show({ kind: "error", text: e instanceof Error ? e.message : "It was not deleted. Try again." });
           } finally {
@@ -198,6 +197,7 @@ function DeleteApplication({ model }: { model: DossierModel }) {
 /** /applications/[ref]: one application, one page. */
 export function ApplicationPage({ appRef }: { appRef: string }) {
   const { data, error, loading, refetch } = useApplication(appRef);
+  const router = useRouter();
   const settings = useSettings();
   const model = useDossierModel(data, settings.data);
   const params = useSearchParams();
@@ -205,6 +205,11 @@ export function ApplicationPage({ appRef }: { appRef: string }) {
   // After a delete the refetch returns nothing: say "Deleted" (not "not found") until the redirect lands.
   const shownId = useRef<number | null>(null);
   if (model) shownId.current = model.app.id;
+  // Deleted from here or from the list: either way this page has nothing left to show.
+  const deleted = !data && wasDeleted(shownId.current);
+  useEffect(() => {
+    if (deleted) router.replace("/applications");
+  }, [deleted, router]);
 
   // Old links (?tab=cv|posting|answers) scroll to the matching section.
   const tab = params.get("tab");
@@ -256,7 +261,7 @@ export function ApplicationPage({ appRef }: { appRef: string }) {
       </Frame>
     );
   }
-  if (!data && wasDeleted(shownId.current)) {
+  if (deleted) {
     return (
       <Frame>
         <p role="status" className="py-10 text-[16px] text-ink-2">

@@ -11,6 +11,7 @@ export {
     recordUpdate,
     updateApplication,
     deleteApplication,
+    deleteApplications,
     wasDeleted,
     deleteEvent,
     updateRequirement,
@@ -21,7 +22,7 @@ export {
     signedUrl,
     refetchAll,
 } from './mutations';
-export type { MoveResult, RecordResult } from './mutations';
+export type { DeleteResult, MoveResult, RecordResult } from './mutations';
 export {
     searchCompanies,
     getCompanyOption,

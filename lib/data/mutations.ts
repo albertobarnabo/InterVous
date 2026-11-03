@@ -1,6 +1,7 @@
 'use client';
 // Writes. Every write goes through RLS as the signed-in user, then refetches what is on screen.
 // An update that matches 0 rows is an error (RLS hides rows instead of refusing them).
+import { isSent } from '../core';
 import type { Phase } from '../types';
 import { currentUserId, db, must, toError } from './client';
 import { todayIn } from './dates';
@@ -9,7 +10,9 @@ import { deriveOverview, fixtureInsertEvent, fixtureToday, loadFixture } from '.
 import { KEYS } from './queries';
 import type {
     Application,
+    Dossier,
     GapState,
+    InsightsInput,
     JobAnswer,
     JobEvent,
     JobProofPoint,
@@ -85,20 +88,138 @@ export function wasDeleted(jobId: number | null | undefined): boolean {
     return jobId != null && deletedJobs.has(Number(jobId));
 }
 
-/** Permanently delete an application and (by cascade) its events, documents, answers and fit items. */
-export async function deleteApplication(jobId: number): Promise<void> {
+export type DeleteResult = {
+    deleted: number;
+    /** Stored files that could not be removed. Their applications are gone anyway. */
+    filesLeft: number;
+    /** Deleted jobs whose folder could not be listed, so files with no row may remain. */
+    filesUnchecked: number;
+};
+
+/** Every object under a folder of the bucket (folder entries have no id). */
+async function listFiles(prefix: string, depth = 2): Promise<string[]> {
+    const { data, error } = await db.storage.from(BUCKET).list(prefix, { limit: 1000 });
+    if (error) throw toError(error);
+    const out: string[] = [];
+    for (const o of data ?? []) {
+        const path = `${prefix}/${o.name}`;
+        if (o.id !== null && o.id !== undefined) out.push(path);
+        else if (depth > 0) out.push(...(await listFiles(path, depth - 1)));
+    }
+    return out;
+}
+
+/**
+ * The stored files of each job. Read before the delete, because the cascade takes the rows that name
+ * them. The job's folder is listed too: a re-upload under a new name leaves the old object with no row.
+ */
+async function filesOfJobs(jobIds: number[]): Promise<{ files: Map<number, Set<string>>; unlisted: Set<number> }> {
+    const [uid, jobs, docs] = await Promise.all([
+        currentUserId(),
+        db.from('jobs').select('id,slug').in('id', jobIds).then(must) as Promise<{ id: number; slug: string | null }[] | null>,
+        db.from('job_documents').select('job_id,storage_path').in('job_id', jobIds).then(must) as Promise<{ job_id: number; storage_path: string | null }[] | null>,
+    ]);
+    const files = new Map<number, Set<string>>(jobIds.map((id) => [id, new Set<string>()]));
+    const unlisted = new Set<number>();
+    for (const d of docs ?? []) if (d.storage_path) files.get(Number(d.job_id))?.add(d.storage_path);
+    await Promise.all(
+        (uid ? jobs ?? [] : []).map(async (j) => {
+            try {
+                const found = await listFiles(`${uid}/${j.slug ?? `job-${j.id}`}`);
+                for (const path of found) files.get(Number(j.id))?.add(path);
+            } catch {
+                // Not worth stopping the delete: the rows above still name most files. Reported instead.
+                unlisted.add(Number(j.id));
+            }
+        }),
+    );
+    return { files, unlisted };
+}
+
+/** Removes stored files that no remaining row names. Returns how many could not be removed; never throws. */
+async function removeFiles(list: string[]): Promise<number> {
+    const paths = [...new Set(list)];
+    if (!paths.length) return 0;
+    try {
+        const used = must(await db.from('job_documents').select('storage_path').in('storage_path', paths)) as { storage_path: string }[] | null;
+        const inUse = new Set(used?.map((d) => d.storage_path));
+        const free = paths.filter((p) => !inUse.has(p));
+        if (!free.length) return 0;
+        const { data, error } = await db.storage.from(BUCKET).remove(free);
+        if (error) return free.length;
+        // A remove the storage policy refuses is no error, only a shorter list. So is a path that was
+        // never there, so only what is still stored counts.
+        const removed = new Set(data?.map((o) => o.name));
+        const missed = free.filter((p) => !removed.has(p));
+        if (!missed.length) return 0;
+        const folders = [...new Set(missed.map((p) => p.slice(0, p.lastIndexOf('/'))))];
+        const stored = new Set((await Promise.all(folders.map((f) => listFiles(f, 0)))).flat());
+        return missed.filter((p) => stored.has(p)).length;
+    } catch {
+        return paths.length;
+    }
+}
+
+/** Drop deleted jobs from every cached copy, as the database's cascade just did. */
+function forgetJobs(ids: number[]) {
+    const gone = new Set(ids);
+    for (const id of ids) deletedJobs.add(id);
+    const kept = <T extends { job_id: number }>(rows: T[]) => rows.filter((r) => !gone.has(Number(r.job_id)));
+    patchCached<Application[]>(KEYS.applications, (rows) => rows.filter((r) => !gone.has(Number(r.id))));
+    patchCached<InsightsInput>(KEYS.insights, (x) => ({
+        ...x,
+        apps: x.apps.filter((a) => !gone.has(Number(a.id))),
+        events: kept(x.events),
+        requirements: kept(x.requirements),
+        jobProofPoints: kept(x.jobProofPoints),
+        contacts: x.contacts.map((c) => (c.job_id !== null && gone.has(Number(c.job_id)) ? { ...c, job_id: null } : c)),
+    }));
+    patchCached<Dossier | null>(KEYS.application(''), (d) => (d && gone.has(Number(d.job.id)) ? null : d));
+}
+
+/**
+ * Permanently delete applications, by cascade their events, documents, answers and fit items, and
+ * their stored files. The rows go first: if a file then fails, the worst case is an orphan that can
+ * still be listed, not a live application whose CV is gone. `onlyUnsent` keeps any job sent since the
+ * caller decided (the database checks, so a send from another tab or the CLI counts). Compare
+ * `deleted` with the ids to see whether some stayed.
+ */
+export async function deleteApplications(jobIds: number[], opts: { onlyUnsent?: boolean } = {}): Promise<DeleteResult> {
+    let gone: number[];
+    let filesLeft = 0;
+    let filesUnchecked = 0;
     if (FIXTURE_MODE) {
         const f = await loadFixture();
-        f.jobs = f.jobs.filter((j) => j.id !== jobId);
-        f.apps = f.apps.filter((a) => a.id !== jobId);
-        f.events = f.events.filter((e) => e.job_id !== jobId);
+        gone = f.jobs.filter((j) => jobIds.includes(j.id) && !(opts.onlyUnsent && isSent(j.phase))).map((j) => j.id);
+        const ids = new Set(gone);
+        const kept = <T extends { job_id: number }>(rows: T[]) => rows.filter((r) => !ids.has(r.job_id));
+        f.jobs = f.jobs.filter((j) => !ids.has(j.id));
+        f.apps = f.apps.filter((a) => !ids.has(a.id as number));
+        f.events = kept(f.events);
+        f.documents = kept(f.documents);
+        f.answers = kept(f.answers);
+        f.requirements = kept(f.requirements);
+        f.jobProofPoints = kept(f.jobProofPoints);
+        f.contacts = f.contacts.map((c) => (c.job_id !== null && ids.has(c.job_id) ? { ...c, job_id: null } : c));
     } else {
-        const rows = must(await db.from('jobs').delete().eq('id', jobId).select('id')) as { id: number }[] | null;
-        if (!rows?.length) throw new Error('No application was deleted. It may already be gone.');
+        const { files, unlisted } = await filesOfJobs(jobIds);
+        const matching = db.from('jobs').delete().in('id', jobIds);
+        const rows = must(await (opts.onlyUnsent ? matching.or('phase.is.null,phase.in.(draft,skipped)') : matching).select('id')) as { id: number }[] | null;
+        gone = (rows ?? []).map((r) => Number(r.id));
+        filesLeft = await removeFiles(gone.flatMap((id) => [...(files.get(id) ?? [])]));
+        filesUnchecked = gone.filter((id) => unlisted.has(id)).length;
     }
-    deletedJobs.add(Number(jobId));
-    patchCached<Application[]>(KEYS.applications, (rows) => rows.filter((r) => r.id !== jobId));
+    forgetJobs(gone);
+    // Also after a miss: whatever is already gone should leave the screen.
     await invalidateAll();
+    return { deleted: gone.length, filesLeft, filesUnchecked };
+}
+
+/** Permanently delete one application. See deleteApplications. Throws when it was not deleted. */
+export async function deleteApplication(jobId: number): Promise<DeleteResult> {
+    const result = await deleteApplications([jobId]);
+    if (!result.deleted) throw new Error('No application was deleted. It may already be gone.');
+    return result;
 }
 
 // ── events ──────────────────────────────────────────────────────────────────
