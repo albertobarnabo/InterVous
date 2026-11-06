@@ -1253,6 +1253,8 @@ These are pure ESM functions. They take `{apps (job_overview rows), events, requ
 | Comparing groups | A sentence such as "A gets replies more often than B" is allowed only when every group has n ≥ 10 **and** the 80% intervals do not overlap. Otherwise show a dot strip per group and the line "Too few to compare yet." |
 | Median | Needs at least 5 values. Below that, list the values. |
 
+**Exception, at the owner's request (2026-11-06):** Home's "From application to offer" (`lib/core/analytics.mjs`) leads every pass rate with a percentage at any n, with "k of n" beside it, the range from n = 20, and a note when any percentage rests on fewer than 20 outcomes.
+
 ### 5.3 Today queue
 
 Items appear in priority order. "Silent" means there has been no inbound event other than an automatic acknowledgement.

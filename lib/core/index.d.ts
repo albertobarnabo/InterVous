@@ -769,26 +769,47 @@ export interface HomeResult {
 export function buildHome(input: CoreInput, opts?: HomeOptions): HomeResult;
 
 // ===========================================================================
-// analytics.mjs ("Your search in numbers" on /home)
+// analytics.mjs ("From application to offer" on /home)
 // ===========================================================================
 
-export const TIMELINE_MAX_WEEKS: number;
-export const TIMELINE_MIN_WEEKS: number;
-export const WHERE_MAX_ROWS: number;
+/** Rounds past this one fold into "4th interview or later". */
+export const MAX_ROUND_STAGES: number;
 
 export interface AnalyticsOptions {
   /** 'campaign' (default): rows since settings.campaign_start; 'all': every row. */
   window?: 'campaign' | 'all';
 }
-export type TimelineSeries = 'built' | 'sent' | 'replies' | 'interviews' | 'rejections' | 'offers';
-export interface TimelineBucket {
-  /** The Monday, or the first of the month. */
-  start: DateString;
-  /** Axis label: '24 Aug', 'Oct ’25'. */
-  tick: string;
-  /** 'Week of 24 Aug', 'October 2025'. */
-  title: string;
-  values: Record<TimelineSeries, number>;
+/** Of the applications that reached a stage: how many reached the next one. */
+export interface FunnelOutcome {
+  passed: number;
+  /** Rejected, or silent past the no-reply line, at this stage. */
+  stopped: number;
+  /** Still open, with no outcome at this stage yet: not in the rate. */
+  waiting: number;
+  /** You withdrew at this stage: not in the rate. */
+  withdrew: number;
+  /** passed + stopped. */
+  decided: number;
+  /** passed / decided, '60%', at any sample size (the owner's choice over spec 5.2); null while nothing is decided. */
+  percent: string | null;
+  /** Fewer than 20 decided: the percentage can still move a lot. */
+  small: boolean;
+  /** null while nothing is decided. Its rangeText is there from 20 decided. */
+  rate: Rate | null;
+}
+export interface FunnelStep extends FunnelOutcome {
+  /** Stage ids: 'sent', 'round1', 'round2', …, 'offer'. */
+  from: string;
+  to: string;
+}
+export interface FunnelAnswer extends FunnelOutcome {
+  /** What to show big: '30%', or '–' while nothing is decided. */
+  value: string;
+  /** What the percentage counts: 'of applications led to an interview'; null with no value. */
+  unit: string | null;
+  answer: string;
+  /** Waiting and withdrawn applications, which the answer leaves out. */
+  aside: string | null;
 }
 export interface AnalyticsResult {
   today: DateString;
@@ -806,43 +827,19 @@ export interface AnalyticsResult {
     unconfirmed: number;
     unconfirmedNote: string | null;
   };
-  intro: string;
-  /** Plain counts. The page's one percentage is the reply rate (i2), with its range. */
-  totals: Array<{ id: 'sent' | 'replied' | 'interviews' | 'offers' | 'rejected' | 'no_reply'; label: string; count: number; detail: string | null; phase: Phase }>;
-  timeline: {
-    unit: 'week' | 'month';
-    buckets: TimelineBucket[];
-    totals: Record<TimelineSeries, number>;
-    undatedSent: number;
-    undatedOutcomes: number;
-    bookedInterviews: number;
-    /** Bookings on an application that closed first. */
-    neverHeld: number;
-    thisWeek: number;
-    /** weekly_target, on the weekly chart only. */
-    target: number | null;
-    paceLine: string;
-    cameBackLine: string;
-    hasCameBack: boolean;
-  };
-  status: Array<{ phase: Phase; count: number }>;
-  rejections: {
-    count: number;
-    beforeInterview: number;
-    afterInterview: number;
-    median: { count: number; allowed: boolean; values: number[]; value?: number };
-    answer: string;
-  };
-  /** I4's answer, counting the replies with no exact date too. */
-  replyTimeLine: string;
-  where: Array<{ id: string; label: string; rows: Array<{ key: string; label: string; sent: number; replied: Rate | null }> }>;
-  /** The comparison sentence: names the split it speaks about. */
-  whereLine: string;
-  i1: I1;
-  i2: I2;
-  i3: I3;
-  i4: I4;
-  i5: I5;
-  i8: I8;
+  intro: string | null;
+  perInterview: FunnelAnswer;
+  /** Of the applications that had an interview: how many ended in an offer. */
+  perOffer: FunnelAnswer;
+  /** Sent, 1st interview, …, Offer, with how many reached each. */
+  stages: Array<{ id: string; label: string; count: number }>;
+  /** One per stage but the last: steps[i] goes from stages[i] to stages[i + 1]. */
+  steps: FunnelStep[];
+  /** Shown when any percentage here rests on fewer than 20 outcomes. */
+  smallNote: string | null;
+  /** Interviews with no round in the History: counted up to the first interview only. */
+  unlogged: number;
+  unloggedNote: string | null;
+  howCounted: string;
 }
 export function computeAnalytics(input: CoreInput, opts?: AnalyticsOptions): AnalyticsResult;

@@ -4,8 +4,24 @@
     {
       "name": "intervous-dev",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
       "port": 3000
+    },
+    {
+      "name": "intervous-busy",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
+      "port": 3000,
+      "env": {
+        "NEXT_PUBLIC_FIXTURES": "1",
+        "IV_FIXTURE_FILE": "/private/tmp/claude-501/-Users-albi-Projects-albertobarnabo-com-apps-InterVous/f39257ab-bdc1-4f7c-b0c5-a0238c72f2fd/scratchpad/busy-fixture.json"
+      }
     }
   ]
 }
