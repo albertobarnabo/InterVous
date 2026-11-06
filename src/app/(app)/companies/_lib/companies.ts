@@ -255,6 +255,27 @@ export async function saveLogo(companyId: string, source: File | string): Promis
   }
 }
 
+/**
+ * Save (or clear, with null) the careers website on its own: companies.website holds it. An update the
+ * database refuses comes back with no row, so that is an error here, not a silent no-op.
+ */
+export async function saveWebsite(companyId: string, website: string | null): Promise<void> {
+  try {
+    if (FIXTURE_MODE) {
+      const c = (await fixtureStore()).companies.find((x) => x.id === companyId);
+      if (!c) throw new Error("That company no longer exists.");
+      c.website = website;
+      return;
+    }
+    const { data, error } = await supabase.from("companies").update({ website }).eq("id", companyId).select("id");
+    if (error) throw new Error(error.message);
+    if (!data?.length) throw new Error("The careers website was not saved. You may not have access to this company.");
+  } finally {
+    changed();
+    void refetchAll();
+  }
+}
+
 export async function clearLogo(companyId: string): Promise<void> {
   try {
     await removeCompanyLogo(companyId);
@@ -313,7 +334,7 @@ export async function saveCompanyInfo(info: Omit<CompanyInfo, "updated_at" | "up
 }
 
 export type ResearchResult = Pick<CompanyInfo, "description" | "industry" | "headquarters" | "founded" | "employee_count"> & {
-  /** The company's website and an image link to its logo, when the search found them. */
+  /** The careers website and an image link to the logo, when the search found them. */
   website?: string | null;
   logo_url?: string | null;
 };
@@ -346,7 +367,18 @@ export function domainOf(url: string | null | undefined): string | null {
   }
 }
 
-/** Adds https:// when a website was typed without a scheme. */
+/** "acme.com/careers" from "https://www.acme.com/careers/": short enough to show, long enough to tell pages apart. */
+export function displayUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  try {
+    const u = new URL(/^https?:\/\//i.test(url) ? url : `https://${url}`);
+    return `${u.hostname.replace(/^www\./, "")}${u.pathname.replace(/\/+$/, "")}`;
+  } catch {
+    return url;
+  }
+}
+
+/** Adds https:// when a link was typed without a scheme. */
 export function normalizeWebsite(url: string): string | null {
   const t = url.trim();
   if (!t) return null;

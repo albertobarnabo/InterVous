@@ -4,7 +4,12 @@
 // (computeAnalytics); this file only lays them out.
 import { ArrowDown, Info } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
-import { computeAnalytics, type AnalyticsOptions, type AnalyticsResult, type CoreInput } from "../../../lib/core";
+import {
+  computeAnalytics,
+  type AnalyticsOptions,
+  type AnalyticsResult,
+  type CoreInput,
+} from "../../../lib/core";
 import { GlassCard, Section, SegmentedControl, Tooltip, cx } from "@/ui";
 
 type Scope = NonNullable<AnalyticsOptions["window"]>;
@@ -45,9 +50,22 @@ function HowCounted({ title, text }: { title: string; text: string }) {
   );
 }
 
-function Card({ title, how, children, className }: { title: string; how?: string; children: ReactNode; className?: string }) {
+function Card({
+  title,
+  how,
+  children,
+  className,
+}: {
+  title: string;
+  how?: string;
+  children: ReactNode;
+  className?: string;
+}) {
   return (
-    <GlassCard padding="md" className={cx("flex min-w-0 flex-col gap-3", className)}>
+    <GlassCard
+      padding="md"
+      className={cx("flex min-w-0 flex-col gap-3", className)}
+    >
       <div className="flex items-start justify-between gap-2">
         <h3 className="text-body font-semibold text-ink">{title}</h3>
         {how ? <HowCounted title={title} text={how} /> : null}
@@ -58,15 +76,31 @@ function Card({ title, how, children, className }: { title: string; how?: string
 }
 
 /** One of the two answers: a big percentage, what it counts, and the counts behind it. */
-function AnswerCard({ title, answer, how }: { title: string; answer: Answer; how: string }) {
+function AnswerCard({
+  title,
+  answer,
+  how,
+}: {
+  title: string;
+  answer: Answer;
+  how: string;
+}) {
   return (
     <Card title={title} how={how}>
       <p className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
-        <span className="iv-num text-[40px] leading-none font-semibold tracking-tight text-ink">{answer.value}</span>
-        {answer.unit ? <span className="text-body font-medium text-ink-2">{answer.unit}</span> : null}
+        <span className="iv-num text-[40px] leading-none font-semibold tracking-tight text-ink">
+          {answer.value}
+        </span>
+        {answer.unit ? (
+          <span className="text-body font-medium text-ink-2">
+            {answer.unit}
+          </span>
+        ) : null}
       </p>
       <p className="text-small break-words text-ink-2">{answer.answer}</p>
-      {answer.aside ? <p className="mt-auto text-caption text-ink-3">{answer.aside}</p> : null}
+      {answer.aside ? (
+        <p className="mt-auto text-caption text-ink-3">{answer.aside}</p>
+      ) : null}
     </Card>
   );
 }
@@ -80,7 +114,10 @@ function Dots({ passed, stopped }: { passed: number; stopped: number }) {
         <span key={`p${i}`} className="block size-2 rounded-full bg-accent" />
       ))}
       {Array.from({ length: stopped }, (_, i) => (
-        <span key={`s${i}`} className="block size-2 rounded-full border-[1.5px] border-ink-3" />
+        <span
+          key={`s${i}`}
+          className="block size-2 rounded-full border-[1.5px] border-ink-3"
+        />
       ))}
     </span>
   );
@@ -88,20 +125,38 @@ function Dots({ passed, stopped }: { passed: number; stopped: number }) {
 
 function verbFor(step: Step): string {
   // Past the first interview, going further can mean another round or an offer straight away.
-  return step.to === "round1" ? "got an interview" : step.to === "offer" ? "got an offer" : "went further";
+  return step.to === "round1"
+    ? "got an interview"
+    : step.to === "offer"
+      ? "got an offer"
+      : "went further";
 }
 
 function StepRow({ step }: { step: Step }) {
-  const extra = [step.waiting ? `${step.waiting} waiting` : null, step.withdrew ? `${step.withdrew} withdrawn` : null].filter(Boolean).join(" · ");
+  const extra = [
+    step.waiting ? `${step.waiting} waiting` : null,
+    step.withdrew ? `${step.withdrew} withdrawn` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
   return (
     <div className="flex gap-2.5 py-1.5 pl-1">
-      <ArrowDown aria-hidden size={14} strokeWidth={2} className="mt-[3px] shrink-0 text-ink-3" />
+      <ArrowDown
+        aria-hidden
+        size={14}
+        strokeWidth={2}
+        className="mt-[3px] shrink-0 text-ink-3"
+      />
       <div className="flex min-w-0 flex-col gap-1.5">
         <p className="text-small text-ink">
           {step.percent ? (
             <>
-              <span className="iv-num font-semibold">{step.percent}</span> {verbFor(step)}{" "}
-              <span className="iv-num text-ink-2">{`(${step.passed} of ${step.decided})`}</span>
+              <span className="iv-num font-semibold">{step.percent}</span>{" "}
+              {verbFor(step)}{" "}
+              <span className="iv-num text-ink-2">
+                {`(${step.passed} of ${step.decided}${step.offers && step.to !== "offer" ? `, ${step.offers} straight to an offer` : ""})`}
+                {step.rate && "rangeText" in step.rate ? `, ${step.rate.rangeText}` : ""}
+              </span>
             </>
           ) : (
             <span className="text-ink-2">No outcome yet</span>
@@ -114,13 +169,29 @@ function StepRow({ step }: { step: Step }) {
   );
 }
 
-function StageRow({ label, count, of }: { label: string; count: number; of: number }) {
+function StageRow({
+  label,
+  count,
+  of,
+}: {
+  label: string;
+  count: number;
+  of: number;
+}) {
   const width = of ? Math.max(count ? 2 : 0, (count / of) * 100) : 0;
   return (
     <div className="grid grid-cols-[minmax(0,8.5rem)_minmax(0,1fr)_auto] items-center gap-3 py-1.5 sm:grid-cols-[minmax(0,10rem)_minmax(0,1fr)_auto]">
-      <span className="text-small font-semibold break-words text-ink">{label}</span>
-      <span aria-hidden className="block h-2 overflow-hidden rounded-full bg-ink/[0.06]">
-        <span className="block h-full rounded-full bg-accent" style={{ width: `${width}%` }} />
+      <span className="text-small font-semibold break-words text-ink">
+        {label}
+      </span>
+      <span
+        aria-hidden
+        className="block h-2 overflow-hidden rounded-full bg-ink/[0.06]"
+      >
+        <span
+          className="block h-full rounded-full bg-accent"
+          style={{ width: `${width}%` }}
+        />
       </span>
       <span className="iv-num text-body font-semibold text-ink">{count}</span>
     </div>
@@ -129,11 +200,18 @@ function StageRow({ label, count, of }: { label: string; count: number; of: numb
 
 export function Analytics({ input }: { input: CoreInput }) {
   const [scope, setScope] = useState<Scope>(readScope);
-  const a = useMemo(() => computeAnalytics(input, { window: scope }), [input, scope]);
+  const a = useMemo(
+    () => computeAnalytics(input, { window: scope }),
+    [input, scope],
+  );
   const sent = a.stages[0]?.count ?? 0;
 
   return (
-    <Section id="numbers" title="From application to offer" description={a.hasData ? (a.intro ?? undefined) : undefined}>
+    <Section
+      id="numbers"
+      title="From application to offer"
+      description={a.hasData ? (a.intro ?? undefined) : undefined}
+    >
       {a.scope.older > 0 ? (
         <SegmentedControl
           aria-label="Which applications to count"
@@ -145,50 +223,82 @@ export function Analytics({ input }: { input: CoreInput }) {
             saveScope(next);
           }}
           options={[
-            { value: "campaign", label: `Since ${a.scope.since}`, count: a.scope.campaign },
+            {
+              value: "campaign",
+              label: `Since ${a.scope.since}`,
+              count: a.scope.campaign,
+            },
             { value: "all", label: "All time", count: a.scope.all },
           ]}
         />
       ) : null}
 
       {a.scope.note || a.scope.unconfirmedNote ? (
-        <p className="text-small text-ink-2">{[a.scope.note, a.scope.unconfirmedNote].filter(Boolean).join(" ")}</p>
+        <p className="text-small text-ink-2">
+          {[a.scope.note, a.scope.unconfirmedNote].filter(Boolean).join(" ")}
+        </p>
       ) : null}
 
       {!a.hasData ? (
         <GlassCard padding="md">
           <p className="text-body text-ink-2">
-            {a.scope.all > 0 ? `No applications since ${a.scope.since} yet.` : "Your numbers show up here once you add a job."}
+            {a.scope.all > 0
+              ? `No applications since ${a.scope.since} yet.`
+              : "Your numbers show up here once you add a job."}
           </p>
         </GlassCard>
       ) : (
         <>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            <AnswerCard title="Getting an interview" answer={a.perInterview} how={a.howCounted} />
-            <AnswerCard title="Getting an offer" answer={a.perOffer} how={a.howCounted} />
+            <AnswerCard
+              title="Getting an interview"
+              answer={a.perInterview}
+              how={a.howCounted}
+            />
+            <AnswerCard
+              title="Getting an offer"
+              answer={a.perOffer}
+              how={a.howCounted}
+            />
           </div>
 
-          <Card title="Pass rate at each stage" how={a.howCounted}>
-            <p className="flex flex-wrap items-center gap-x-4 gap-y-1 text-caption text-ink-2">
-              <span className="flex items-center gap-1.5">
-                <span aria-hidden className="block size-2 rounded-full bg-accent" /> went further
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span aria-hidden className="block size-2 rounded-full border-[1.5px] border-ink-3" /> stopped there: rejected, or no reply
-              </span>
-            </p>
-            <ol aria-label="Applications at each stage, and how many went on">
-              {a.stages.map((s, i) => (
-                <li key={s.id}>
-                  <StageRow label={s.label} count={s.count} of={sent} />
-                  {a.steps[i] ? <StepRow step={a.steps[i]} /> : null}
-                </li>
-              ))}
-            </ol>
-            {a.smallNote || a.unloggedNote ? (
-              <p className="text-caption text-ink-3">{[a.smallNote, a.unloggedNote].filter(Boolean).join(" ")}</p>
-            ) : null}
-          </Card>
+          {sent ? (
+            <Card title="Pass rate at each stage" how={a.howCounted}>
+              {/* The step sentences carry every count; the legend only explains the dots. */}
+              <p
+                aria-hidden
+                className="flex flex-wrap items-center gap-x-4 gap-y-1 text-caption text-ink-2"
+              >
+                <span className="flex items-center gap-1.5">
+                  <span
+                    aria-hidden
+                    className="block size-2 rounded-full bg-accent"
+                  />{" "}
+                  went further
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span
+                    aria-hidden
+                    className="block size-2 rounded-full border-[1.5px] border-ink-3"
+                  />{" "}
+                  stopped there: rejected, or went quiet
+                </span>
+              </p>
+              <ol aria-label="Applications at each stage, and how many went on">
+                {a.stages.map((s, i) => (
+                  <li key={s.id}>
+                    <StageRow label={s.label} count={s.count} of={sent} />
+                    {a.steps[i] ? <StepRow step={a.steps[i]} /> : null}
+                  </li>
+                ))}
+              </ol>
+              {a.smallNote || a.unloggedNote ? (
+                <p className="text-caption text-ink-3">
+                  {[a.smallNote, a.unloggedNote].filter(Boolean).join(" ")}
+                </p>
+              ) : null}
+            </Card>
+          ) : null}
         </>
       )}
     </Section>

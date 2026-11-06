@@ -1,20 +1,22 @@
 "use client";
 
-import { ArrowUpRight, ChevronRight, ImagePlus, Link2, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
+import { ArrowUpRight, Briefcase, ChevronRight, ImagePlus, Link2, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { formatShort } from "../../../../../lib/core";
 import type { Application } from "../../../../../lib/data";
-import { Button, CompanyMark, ConfirmDialog, Field, Input, Sheet, Skeleton, Textarea, useToast } from "@/ui";
+import { Button, CompanyMark, ConfirmDialog, Field, IconButton, Input, Sheet, Skeleton, Textarea, useToast } from "@/ui";
 import { StatusPill } from "@/features/dossier/glass";
 import { openNewApplicationWith } from "@/features/new-application/events";
 import {
   deleteCompany,
-  domainOf,
+  displayUrl,
   getCompanyInfo,
+  normalizeWebsite,
   researchCompany,
   saveLogo,
   saveCompanyInfo,
+  saveWebsite,
   type CompanyInfo,
   type CompanyWithTags,
 } from "../_lib/companies";
@@ -49,7 +51,7 @@ const toDraft = (i: Partial<CompanyInfo> | null): Draft => ({
   employee_count: i?.employee_count ?? "",
 });
 
-/** The slide-over for one company: logo, its applications (and Link an application), then About. */
+/** The slide-over for one company: logo and careers website, its applications (and Link an application), then About. */
 export function CompanyPanel({ company, apps, appsLoading, today, tavily, onClose, onEdit, onLogo, onLinkApp }: Props) {
   const { show } = useToast();
   const [last, setLast] = useState<CompanyWithTags | null>(company);
@@ -133,26 +135,12 @@ function PanelBody({
   onLogo,
   onLinkApp,
 }: Omit<Props, "company" | "onClose" | "onEdit"> & { company: CompanyWithTags }) {
-  const domain = domainOf(company.website);
   return (
     <div className="flex flex-col gap-8">
-      <div className="flex items-center gap-4">
+      <div className="flex items-start gap-4">
         <CompanyMark key={company.logo_url ?? "none"} name={company.name} logoUrl={company.logo_url} size={64} className="rounded-[16px]" />
         <div className="flex min-w-0 flex-1 flex-col items-start gap-1.5">
-          {company.website ? (
-            <a
-              href={company.website}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex max-w-full cursor-pointer items-center gap-1 text-[15px] font-medium text-accent underline-offset-4 hover:underline"
-            >
-              <span className="truncate">{domain}</span>
-              <ArrowUpRight aria-hidden size={15} className="shrink-0" />
-              <span className="sr-only">(opens in a new tab)</span>
-            </a>
-          ) : (
-            <p className="text-[15px] text-ink-2">No website saved</p>
-          )}
+          <CareersLink company={company} />
           {company.tags.length ? <p className="text-[14px] text-ink-2">{company.tags.map((t) => t.name).join(" · ")}</p> : null}
           <Button size="sm" variant="secondary" icon={ImagePlus} onClick={() => onLogo(company)}>
             {company.logo_url ? "Change logo" : "Add logo"}
@@ -211,6 +199,106 @@ function PanelBody({
   );
 }
 
+/** The careers website, where the company posts its jobs: a link, added or changed right here. */
+function CareersLink({ company }: { company: CompanyWithTags }) {
+  const { show } = useToast();
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    setEditing(false);
+    setError(null);
+  }, [company.id]);
+
+  const start = () => {
+    setValue(company.website ?? "");
+    setError(null);
+    setEditing(true);
+  };
+  const save = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      const link = normalizeWebsite(value);
+      await saveWebsite(company.id, link);
+      setEditing(false);
+      show({ text: link ? "Careers website saved." : "Careers website removed." });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "It was not saved. Try again.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (editing) {
+    return (
+      <form
+        className="flex w-full flex-col gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void save();
+        }}
+      >
+        <Field label="Careers website" hint="Where they post their jobs. Leave it empty to remove it.">
+          <Input
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            onKeyDown={(e) => {
+              // Esc leaves the field, not the whole panel.
+              if (e.key === "Escape") {
+                e.preventDefault();
+                e.stopPropagation();
+                setEditing(false);
+              }
+            }}
+            placeholder="acme.com/careers"
+            inputMode="url"
+            autoComplete="off"
+            autoFocus
+          />
+        </Field>
+        {error ? (
+          <p role="alert" className="text-[14px] text-danger">
+            {error}
+          </p>
+        ) : null}
+        <div className="flex gap-2">
+          <Button type="submit" size="sm" variant="primary" loading={saving}>
+            Save
+          </Button>
+          <Button size="sm" variant="quiet" onClick={() => setEditing(false)}>
+            Cancel
+          </Button>
+        </div>
+      </form>
+    );
+  }
+  if (!company.website) {
+    return (
+      <Button size="sm" variant="secondary" icon={Briefcase} onClick={start}>
+        Add careers website
+      </Button>
+    );
+  }
+  return (
+    <div className="flex max-w-full items-center gap-1">
+      <a
+        href={company.website}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex min-w-0 cursor-pointer items-center gap-1 text-[15px] font-medium text-accent underline-offset-4 hover:underline"
+      >
+        <Briefcase aria-hidden size={15} className="shrink-0" />
+        <span className="truncate">{displayUrl(company.website)}</span>
+        <ArrowUpRight aria-hidden size={15} className="shrink-0" />
+        <span className="sr-only">(careers website, opens in a new tab)</span>
+      </a>
+      <IconButton size="sm" label="Change careers website" icon={Pencil} onClick={start} className="text-ink-3" />
+    </div>
+  );
+}
+
 function About({ company, tavily }: { company: CompanyWithTags; tavily: boolean }) {
   const { show } = useToast();
   const [info, setInfo] = useState<CompanyInfo | null>(null);
@@ -246,7 +334,12 @@ function About({ company, tavily }: { company: CompanyWithTags; tavily: boolean 
       setDraft(toDraft(r));
       setFromWeb(true);
       setEditing(true);
-      // A found logo is saved straight away, but never replaces one the company already has.
+      // A found careers website and logo are saved straight away, but never replace what the company has.
+      if (r.website && !company.website) {
+        await saveWebsite(company.id, r.website)
+          .then(() => show({ text: "Careers website found on the web. Change it any time." }))
+          .catch(() => undefined);
+      }
       if (r.logo_url && !company.logo_url) {
         await saveLogo(company.id, r.logo_url)
           .then(() => show({ text: "Logo added from the web. Change it any time." }))

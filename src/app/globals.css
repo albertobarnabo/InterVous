@@ -64,9 +64,6 @@
   --phase-skipped-bg: #EFEDE7;
   --caution-fg: #8A5A00;
   --caution-bg: #FBF0D9;
-
-  /* A chart series that is context, next to one in the accent. Marks only, 3:1 on glass. */
-  --chart-muted: #7C8AA0;
 }
 
 /* Glass, shape, layers and layout constants. */

@@ -21,8 +21,6 @@ export type StatTileProps = {
   /** Where a click goes (the filtered list). Without href or onClick the tile is static. */
   href?: string;
   onClick?: () => void;
-  /** A quiet line under the label: "1 of 11". A rate here comes from lib/core/stats.mjs. */
-  detail?: ReactNode;
   /** A CSS colour for the small dot before the label (e.g. phaseVars("applied").fg). */
   color?: string;
   /** Pressed state, when tiles act as a filter. */
@@ -31,7 +29,7 @@ export type StatTileProps = {
 };
 
 /** A glass tile with a big number and a plain label, clickable to the list it counts. */
-export function StatTile({ value, label, href, onClick, detail, color, selected, className }: StatTileProps) {
+export function StatTile({ value, label, href, onClick, color, selected, className }: StatTileProps) {
   const clickable = Boolean(href || onClick);
   const body = (
     <>
@@ -50,7 +48,6 @@ export function StatTile({ value, label, href, onClick, detail, color, selected,
         {color ? <span aria-hidden className="size-2 shrink-0 translate-y-[-1px] rounded-full" style={{ background: color }} /> : null}
         <span className="min-w-0 break-words">{label}</span>
       </span>
-      {detail ? <span className="iv-num mt-1 block text-caption font-normal text-ink-2">{detail}</span> : null}
     </>
   );
   const cls = cx(

@@ -4,7 +4,7 @@
 //   2 "Do this now": at most 3 cards, one plain sentence and one button each
 //   3 four status tiles, each a link to the filtered Applications list
 //   4 "What we've learned so far": at most 3 plain sentences
-//   5 "Your search in numbers": the analytics (Analytics.tsx)
+//   5 "From application to offer": applications per interview and the pass rate at each stage (Analytics.tsx)
 //   6 "How InterVous works": the three steps, and Add a job
 // Every sentence and number comes from lib/core (buildHome, computeAnalytics). This file renders and
 // wires the buttons to lib/data writes (each with Undo). "Not now" lives in localStorage (dismissed.ts).

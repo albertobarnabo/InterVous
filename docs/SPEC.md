@@ -206,6 +206,7 @@ Layout:
 - The heading becomes "Companies", with the subtitle "Companies you've applied to or are watching".
 - The gradient cards become plain cards.
 - The detail slide-over lists "Your applications here", joined by `jobs.company_id` with a fallback to the name. Each entry is a row linking to its dossier.
+- **A company's link is its careers website**, where it posts its jobs (`companies.website`; the manifest's `company_website` fills it too). It is added or changed in place in the slide-over, and in the editor. Auto-fill asks Tavily for the careers page when none is saved, and never replaces one. The logo comes from that site's domain, or from the company's own site when the careers page is on a job board such as jobs.lever.co.
 - The logged-out blank page is fixed by the shared auth guard.
 - The logo map is fetched only for companies that appear in his jobs, which removes the silent 1000-row truncation.
 

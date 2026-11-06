@@ -310,6 +310,10 @@ export function resolveRef<T extends { id: number | string; slug?: string | null
 export function normalizeUrl(url: string | null | undefined): string;
 /** Escape % _ and \ for ILIKE. */
 export function escapeLike(s: string): string;
+/** True when a link is on a job board (lever.co, greenhouse.io, …) rather than the company's own site. */
+export function isJobBoardUrl(url: string | null | undefined): boolean;
+/** The first public link in a piece of text, as an https URL without its query; null when there is none. */
+export function linkFrom(text: string | null | undefined): string | null;
 
 // ===========================================================================
 // stats.mjs: the sample-size rule (spec 5.2), the only place it lives
@@ -782,7 +786,9 @@ export interface AnalyticsOptions {
 /** Of the applications that reached a stage: how many reached the next one. */
 export interface FunnelOutcome {
   passed: number;
-  /** Rejected, or silent past the no-reply line, at this stage. */
+  /** Of those that passed, how many went straight to an offer. */
+  offers: number;
+  /** Rejected, or quiet past the no-reply line with nothing booked, at this stage. */
   stopped: number;
   /** Still open, with no outcome at this stage yet: not in the rate. */
   waiting: number;

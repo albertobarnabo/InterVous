@@ -92,6 +92,7 @@ export type CompanyInfo = {
 export type Company = {
     id: string;
     name: string;
+    /** The careers website: where the company posts its jobs (the app's only link for a company). */
     website: string | null;
     logo_url: string | null;
     created_by: string;

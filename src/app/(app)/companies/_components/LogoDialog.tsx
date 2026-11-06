@@ -1,9 +1,11 @@
 "use client";
 // "Add logo" / "Change logo" for one company: upload an image (saved to the public bucket
 // user_avatars under <user_id>/company-logos/<company_id>.<ext>), or paste an image link.
-// When the website is known, its icon is offered as a one-tap choice.
+// When the careers website is on the company's own domain, that site's icon is offered as a one-tap
+// choice (on a job board such as jobs.lever.co it would be the board's icon, so none is offered).
 import { ImageUp, Link2, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState, type DragEvent } from "react";
+import { isJobBoardUrl } from "../../../../../lib/core";
 import { checkLogoUrl, logoFileProblem } from "../../../../../lib/data";
 import { Button, CompanyMark, Dialog, Field, Input, cx, useToast } from "@/ui";
 import { clearLogo, domainOf, saveLogo } from "../_lib/companies";
@@ -43,7 +45,7 @@ export function LogoDialog({ open, onClose, company, onSaved }: Props) {
   useEffect(() => () => void (preview && URL.revokeObjectURL(preview)), [preview]);
 
   if (!company) return null;
-  const suggestion = iconFor(company.website);
+  const suggestion = isJobBoardUrl(company.website) ? null : iconFor(company.website);
 
   const pick = (f: File | null | undefined) => {
     if (!f) return;

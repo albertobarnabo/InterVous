@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getUserAndKeys } from '../../../../lib/backend/serverKeys';
+import { isJobBoardUrl, linkFrom } from '../../../../lib/core';
 
 const TAVILY_URL = 'https://api.tavily.com/search';
 
@@ -111,16 +112,22 @@ async function findLogo(domain: string): Promise<string | null> {
     return (await isImage(google)) ? google : null;
 }
 
-/* Website (from the record, or asked to Tavily) and logo; never fails the whole auto-fill. */
-async function websiteAndLogo(apiKey: string, subject: string, website: string) {
+/*
+ * The careers website (the one on record, else asked to Tavily) and the logo; never fails the whole
+ * auto-fill. The logo comes from the careers site's domain, unless that is a job board such as
+ * jobs.lever.co: then from the company's own site, asked to Tavily.
+ */
+async function careersAndLogo(apiKey: string, subject: string, saved: string) {
     try {
-        let domain = website ? cleanDomain(website) : null;
+        const careers =
+            linkFrom(saved) ??
+            linkFrom(await tavilyAnswer(apiKey, `What is the URL of the careers page where ${subject} lists its open jobs? Answer with the full URL only.`));
+        let domain = careers && !isJobBoardUrl(careers) ? cleanDomain(careers) : null;
         if (!domain) {
             const answer = await tavilyAnswer(apiKey, `What is the official website of ${subject}? Answer with the domain only, e.g. example.com.`);
             domain = cleanDomain(answer);
         }
-        if (!domain) return { website: null, logo_url: null };
-        return { website: `https://${domain}`, logo_url: await findLogo(domain) };
+        return { website: careers, logo_url: domain ? await findLogo(domain) : null };
     } catch (err) {
         if (err instanceof Error && err.message === 'INVALID_KEY') throw err;
         return { website: null, logo_url: null };
@@ -155,7 +162,7 @@ export async function POST(req: Request) {
             );
         }
 
-        const site = website ? ` (website: ${website})` : '';
+        const site = website ? ` (careers website: ${website})` : '';
         const subject = `the company "${companyName}"${site}`;
 
         const [description, industry, headquarters, founded, employee_count, found] =
@@ -165,7 +172,7 @@ export async function POST(req: Request) {
                 tavilyAnswer(apiKey, `Where is ${subject} headquartered? Answer with city and country only.`),
                 tavilyAnswer(apiKey, `In what year was ${subject} founded? Answer with the year only.`),
                 tavilyAnswer(apiKey, `Approximately how many employees does ${subject} have? Answer briefly, e.g. "about 5,000".`),
-                websiteAndLogo(apiKey, subject, website),
+                careersAndLogo(apiKey, subject, website),
             ]);
 
         return NextResponse.json({

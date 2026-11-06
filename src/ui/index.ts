@@ -23,10 +23,7 @@
 //   To-do card      <ActionCard text="European Central Bank hasn't replied in 16 days. A short follow-up can help."
 //                     company={{ name, logoUrl }} action={{ label: "Copy follow-up", onClick }} />   one sentence, one button
 //   Steps strip     <Steps items={["Add a job (paste the link)", "Mark it as sent", "Tell InterVous what happened"]} />
-//   Charts          <TimeChart aria-label="Sent per week" data={buckets} series={[{ id, label, color }]} />   counts over time, table included
-//                   <BarList rows={[{ key, label, value, detail }]} />   horizontal bars, every value written out
-//                   <DayStrip aria-label="Reply time" dots={[{ key, name, days }]} />   one dot per item on a days axis
-//                   <DotStrip /> and <RangeBar /> show a rate, as lib/core/stats.mjs allows it
+//   Rates           <DotStrip /> and <RangeBar /> show a rate, as lib/core/stats.mjs allows it
 //   Status          <StatusPill status={app.phase} />   plain words: Not sent · Sent · waiting · In process ·
 //                   Interview · Offer · Rejected · No reply · Withdrawn · Not applying. Text: statusLabel(phase).
 //                   (PhasePill phase={…} is the same pill under its old name.)
@@ -91,12 +88,6 @@ export { RangeBar } from "./RangeBar";
 export type { RangeBarProps } from "./RangeBar";
 export { WeekBars } from "./WeekBars";
 export type { WeekBarsProps } from "./WeekBars";
-export { TimeChart } from "./TimeChart";
-export type { TimeChartProps, TimeSeries, TimeBucket } from "./TimeChart";
-export { BarList } from "./BarList";
-export type { BarListProps, BarListRow } from "./BarList";
-export { DayStrip } from "./DayStrip";
-export type { DayStripProps, DayStripDot } from "./DayStrip";
 export {
   OPEN_PALETTE,
   OPEN_NEW_APPLICATION,

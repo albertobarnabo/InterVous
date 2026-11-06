@@ -27,7 +27,7 @@ type Props = {
   onSaved: (company: { id: string; name: string }) => void;
 };
 
-/** Add or edit a company: name, website and tags (with tag create, rename and delete). The logo has its own dialog. */
+/** Add or edit a company: name, careers website and tags (with tag create, rename and delete). The logo has its own dialog. */
 export function CompanyEditor({ open, company, initialName = "", onClose, onSaved }: Props) {
   const { show } = useToast();
   const [name, setName] = useState("");
@@ -130,8 +130,8 @@ export function CompanyEditor({ open, company, initialName = "", onClose, onSave
             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Acme" autoFocus data-autofocus required className="h-11 text-[16px]" />
           </Field>
         </div>
-        <Field label="Website" hint="Optional. Auto-fill and the logo suggestion use it.">
-          <Input value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="acme.com" inputMode="url" autoComplete="off" className="h-11 text-[16px]" />
+        <Field label="Careers website" hint="Where they post their jobs. Optional: Auto-fill can find it.">
+          <Input value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="acme.com/careers" inputMode="url" autoComplete="off" className="h-11 text-[16px]" />
         </Field>
       </form>
 

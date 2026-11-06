@@ -4,7 +4,7 @@ import { ImagePlus } from "lucide-react";
 import type { Application } from "../../../../../lib/data";
 import { Button, CompanyMark, cx } from "@/ui";
 import { glassClass } from "@/features/dossier/glass";
-import { domainOf, type CompanyWithTags } from "../_lib/companies";
+import { displayUrl, type CompanyWithTags } from "../_lib/companies";
 import { summaryLine } from "../_lib/match";
 
 type Props = {
@@ -16,7 +16,7 @@ type Props = {
 
 /** One company in the grid. The whole card opens the company; "Add logo" shows while the logo is missing. */
 export function CompanyCard({ company, apps, onOpen, onAddLogo }: Props) {
-  const domain = domainOf(company.website);
+  const careers = displayUrl(company.website);
   return (
     <article
       className={cx(
@@ -37,7 +37,7 @@ export function CompanyCard({ company, apps, onOpen, onAddLogo }: Props) {
               {company.name}
             </button>
           </h2>
-          <p className="truncate text-[14px] leading-5 text-ink-2">{domain ?? "No website saved"}</p>
+          <p className="truncate text-[14px] leading-5 text-ink-2">{careers ?? "No careers website"}</p>
         </div>
       </div>
       <p className={cx("text-[15px] leading-6", apps.length ? "text-ink" : "text-ink-2")}>{summaryLine(apps)}</p>
