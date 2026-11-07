@@ -14,12 +14,13 @@ import { ArrowLeft, CornerDownLeft, Search } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../../../contexts/AuthContext";
-import { appPath, formatShort } from "../../../lib/core";
+import { appPath, formatShort, interviewTypeLabel, type InterviewType } from "../../../lib/core";
 import { logEvent, updateApplication, useApplications, type Application, type EventKind } from "../../../lib/data";
 import { Button, CompanyMark, DateInput, Field, Input, Kbd, StatusPill, cx, useToast } from "@/ui";
 import { OPEN_PALETTE, onShellEvent, openShortcuts } from "@/ui/events";
 import { listCompanies } from "@/app/(app)/companies/_lib/companies";
 import { openNewApplicationWith } from "@/features/new-application/events";
+import { InterviewTypePicker } from "@/features/applications/InterviewTypePicker";
 import { grouped, search, type PaletteCommand, type PaletteItem } from "./items";
 import { useToday } from "./useToday";
 
@@ -244,11 +245,13 @@ function StepForm({ step, onBack, onDone }: { step: NonNullable<Step>; onBack: (
   const today = useToday();
   const [date, setDate] = useState(today);
   const [kind, setKind] = useState<EventKind>("reply");
+  const [interviewType, setInterviewType] = useState<InterviewType | null>(null);
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const app = step.app;
   const path = appPath({ id: Number(app.id), slug: app.slug });
+  const bookingInterview = step.type === "reply" && kind === "interview_scheduled";
 
   useEffect(() => setDate(today), [today]);
 
@@ -263,7 +266,16 @@ function StepForm({ step, onBack, onDone }: { step: NonNullable<Step>; onBack: (
         if (left.length !== uncertain.length) await updateApplication(Number(app.id), { uncertain: left });
         show({ text: `${app.company_name} marked as sent on ${formatShort(date, { today })}.`, action: { label: "Open", run: () => router.push(path) } });
       } else {
-        await logEvent(Number(app.id), { kind, occurred_on: date, title: note.trim() || null });
+        // For an interview the kind of interview is the title (lib/core/interviews.mjs), the note its body.
+        const interview = kind === "interview_scheduled";
+        const text = note.trim() || null;
+        await logEvent(Number(app.id), {
+          kind,
+          occurred_on: date,
+          // A free note would be read for a kind of interview, so for an interview it stays a note.
+          title: interview ? interviewTypeLabel(interviewType) : text,
+          body: interview ? text : null,
+        });
         show({ text: `Logged for ${app.company_name}.`, action: { label: "Open", run: () => router.push(path) } });
       }
       onDone();
@@ -313,9 +325,11 @@ function StepForm({ step, onBack, onDone }: { step: NonNullable<Step>; onBack: (
             ))}
           </div>
         ) : null}
+        {step.type === "reply" && kind === "interview_scheduled" ? <InterviewTypePicker value={interviewType} onChange={setInterviewType} /> : null}
         <div className="flex flex-wrap items-start gap-3">
-          <Field label={step.type === "sent" ? "Date sent" : "Date"}>
-            <DateInput value={date} max={today} onChange={(e) => setDate(e.target.value)} required autoFocus={step.type === "sent"} />
+          {/* A booked interview is dated on its own day, which is usually ahead. */}
+          <Field label={step.type === "sent" ? "Date sent" : bookingInterview ? "Interview day" : "Date"}>
+            <DateInput value={date} max={bookingInterview ? undefined : today} onChange={(e) => setDate(e.target.value)} required autoFocus={step.type === "sent"} />
           </Field>
           {step.type === "reply" ? (
             <Field label="Note" hint="Optional" className="min-w-48 flex-1">

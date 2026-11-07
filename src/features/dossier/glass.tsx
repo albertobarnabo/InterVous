@@ -62,7 +62,7 @@ export function Section({
 }
 
 /** Where an application stands, in plain words, on the status tint. Never colour alone. */
-export function StatusPill({ phase, className }: { phase: Phase | string | null | undefined; className?: string }) {
+export function StatusPill({ phase, label, className }: { phase: Phase | string | null | undefined; label?: string; className?: string }) {
   const v = phaseVars(phase ?? "draft");
   return (
     <span
@@ -70,7 +70,7 @@ export function StatusPill({ phase, className }: { phase: Phase | string | null 
       style={{ color: v.fg, background: v.bg }}
     >
       <span aria-hidden className="size-2 rounded-full" style={{ background: v.fg }} />
-      {statusLabel(phase)}
+      {label ?? statusLabel(phase)}
     </span>
   );
 }

@@ -4,8 +4,9 @@
 //   SentDialog    "When did you send it?": the date, Save.
 // Both write through useUpdates() (one undoable recordUpdate each).
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import type { Phase } from "../../../lib/core";
+import type { InterviewType, Phase } from "../../../lib/core";
 import { Button, CompanyMark, DateInput, Dialog, Field, cx } from "@/ui";
+import { InterviewTypePicker } from "./InterviewTypePicker";
 import { choicesFor, useUpdates, type UpdateChoice } from "./updates";
 
 export type DialogTarget = {
@@ -14,6 +15,8 @@ export type DialogTarget = {
   role: string;
   phase: Phase;
   logoUrl?: string | null;
+  /** The last interview's day, when the application is waiting for its result. */
+  awaitedInterviewOn?: string | null;
 };
 
 function Who({ t }: { t: DialogTarget }) {
@@ -27,6 +30,8 @@ function Who({ t }: { t: DialogTarget }) {
     </div>
   );
 }
+
+const isInterview = (c: UpdateChoice) => c === "interview" || c === "interview_done";
 
 function message(e: unknown) {
   return e instanceof Error ? e.message : "It was not saved. Try again.";
@@ -52,12 +57,14 @@ export function UpdateDialog({
   const { record } = useUpdates();
   const [choice, setChoice] = useState<UpdateChoice | null>(null);
   const [date, setDate] = useState(today);
+  const [type, setType] = useState<InterviewType | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!target) return;
     setChoice(null);
+    setType(null);
     setDate(today);
     setError(null);
     setBusy(false);
@@ -71,7 +78,7 @@ export function UpdateDialog({
     setBusy(true);
     setError(null);
     try {
-      await record({ id: t.id, company: t.company, phase: t.phase }, c, on, today);
+      await record({ id: t.id, company: t.company, phase: t.phase }, c, on, today, isInterview(c) ? type : null);
       onClose();
     } catch (e) {
       setError(message(e));
@@ -107,7 +114,11 @@ export function UpdateDialog({
                   disabled={busy}
                   onClick={() => {
                     if (c.immediate) void save(c.id, today);
-                    else setChoice(c.id);
+                    else {
+                      setChoice(c.id);
+                      // "Interview done" after an interview that already happened means that interview.
+                      if (c.id === "interview_done" && t.awaitedInterviewOn) setDate(t.awaitedInterviewOn);
+                    }
                   }}
                   className={cx(
                     "flex min-h-12 cursor-pointer items-center gap-3 rounded-2xl px-4 text-left text-body font-medium transition-[background-color,box-shadow] duration-150",
@@ -122,6 +133,7 @@ export function UpdateDialog({
               );
             })}
           </div>
+          {picked && isInterview(picked.id) ? <InterviewTypePicker value={type} onChange={setType} /> : null}
           {picked ? (
             <div className="flex flex-wrap items-end gap-3">
               <Field label={picked.when}>

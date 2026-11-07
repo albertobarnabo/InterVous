@@ -413,6 +413,10 @@ export interface Derived {
   lastInviteOn: DateString | null;
   nextInterviewOn: DateString | null;
   nextInterviewAt: Timestamp | null;
+  /** The latest interview round on or before today. */
+  lastInterviewOn: DateString | null;
+  /** Interviewing, the last interview's day has passed and none is ahead: waiting for their answer. */
+  awaitingResult: boolean;
   hasContact: boolean;
   contactCount: number;
   events: JobEvent[];
@@ -434,6 +438,37 @@ export interface Context {
 export function buildContext(input: CoreInput): Context;
 /** List group with the campaign window: rows before campaign_start are 'older'. */
 export function listGroupOf(d: Derived): ListGroupId;
+/** The phase's group, except that an application waiting for an interview's result is 'waiting'. */
+export function statusGroupOf(d: Pick<Derived, 'phase' | 'awaitingResult'>): ListGroupId;
+
+// ===========================================================================
+// interviews.mjs: kinds of interview (from the event title), rounds, and the stage a row reached
+// ===========================================================================
+
+export type InterviewType = 'hr' | 'technical' | 'hiring_manager' | 'case' | 'behavioural' | 'final' | 'other';
+/** In picker order. `label` is the title the app writes, and the exact match when reading one back. */
+export const INTERVIEW_TYPES: ReadonlyArray<{ id: InterviewType; label: string; short: string }>;
+/** The kind a title names (exact label, the old tracker's words, or keywords), or null. */
+export function interviewTypeOf(title: string | null | undefined): InterviewType | null;
+export function interviewTypeLabel(id: InterviewType | null | undefined): string | null;
+/** "technical interview" from "Technical interview"; "HR interview" stays as it is. */
+export function lowerFirst(s: string): string;
+export interface InterviewRound {
+  on: DateString;
+  type: InterviewType | null;
+}
+/** The rounds, oldest first; on a closed application only those up to today. */
+export function interviewRounds(d: { phase: string; events: JobEvent[] }, today: DateString): InterviewRound[];
+export interface StageReached {
+  /** 'Screening', 'Assessment', 'Technical interview', '2nd interview' */
+  label: string;
+  type: InterviewType | null;
+  rounds: number;
+  /** For a sentence: 'at screening', 'after the technical interview'. */
+  phrase: string;
+}
+/** How far an application got; for a rejected one, where it stopped. */
+export function stageReached(d: { phase: string; events: JobEvent[]; app?: { stage?: string | null } }, today: DateString): StageReached;
 /** '3 weeks' when whole weeks (14+), else '21 days'. */
 export function weeksOrDays(days: number): string;
 
@@ -843,6 +878,23 @@ export interface AnalyticsResult {
   steps: FunnelStep[];
   /** Shown when any percentage here rests on fewer than 20 outcomes. */
   smallNote: string | null;
+  /** Each kind of interview with its rounds: passed when another round or an offer followed. Picker order. */
+  byType: Array<{
+    id: InterviewType;
+    label: string;
+    passed: number;
+    stopped: number;
+    waiting: number;
+    withdrew: number;
+    decided: number;
+    percent: string | null;
+    small: boolean;
+  }>;
+  /** 'So far the technical interview stops you most: 1 of 4 went further.'; null with no typed round. */
+  byTypeLine: string | null;
+  /** Rounds whose kind is not known. */
+  untyped: number;
+  untypedNote: string | null;
   /** Interviews with no round in the History: counted up to the first interview only. */
   unlogged: number;
   unloggedNote: string | null;

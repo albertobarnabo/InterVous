@@ -11,7 +11,7 @@
 import { CheckCircle2, FileText, Hourglass, Lightbulb, ListChecks, MessageSquareReply, Plus, RotateCw, Send, Target, X, type LucideIcon } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
 import { useAuth } from "../../../contexts/AuthContext";
-import { addDays, appPath, buildHome, buildToday, formatDay, type ConfirmQuestion, type HomeAction, type StatusGroupId } from "../../../lib/core";
+import { addDays, appPath, buildContext, buildHome, buildToday, formatDay, type ConfirmQuestion, type HomeAction, type StatusGroupId } from "../../../lib/core";
 import { updateApplication } from "../../../lib/data";
 import {
   ActionCard,
@@ -112,6 +112,11 @@ export function HomeView() {
   const [busy, setBusy] = useState<string | null>(null);
 
   const home = useMemo(() => (core.input ? buildHome(core.input, { dismissed }) : null), [core.input, dismissed]);
+  // Applications waiting for an interview's result, with that interview's day ("Interview done" defaults to it).
+  const awaited = useMemo(
+    () => new Map(core.input ? buildContext(core.input).all.filter((d) => d.awaitingResult).map((d) => [d.id, d.lastInterviewOn]) : []),
+    [core.input],
+  );
   const allQuestions = useMemo<ConfirmQuestion[]>(() => {
     if (!core.input) return [];
     const item = buildToday(core.input).items.find((it) => it.type === "confirm_facts");
@@ -145,6 +150,7 @@ export function HomeView() {
     role: a.role,
     phase: a.phase as DialogTarget["phase"],
     logoUrl: logos.get(a.appId) ?? null,
+    awaitedInterviewOn: awaited.get(a.appId) ?? null,
   });
 
   // A confirm batch whose answers are all waiting for their Undo window is done for now.

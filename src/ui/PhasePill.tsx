@@ -5,12 +5,14 @@ import { phaseVars, statusLabel } from "./phase";
 export type StatusPillProps = {
   /** The status id (lib/core phase). Shown as plain words: "Sent · waiting", "Interview", ... */
   status: Phase | null | undefined;
+  /** Words in place of the status's own, with its colours: "Waiting for result" on the waiting status. */
+  label?: string;
   size?: "sm" | "md";
   className?: string;
 };
 
 /** Always a word, never colour alone: a small dot plus the plain label on the status tint. */
-export function StatusPill({ status, size = "md", className }: StatusPillProps) {
+export function StatusPill({ status, label, size = "md", className }: StatusPillProps) {
   const p = status ?? "draft";
   const v = phaseVars(p);
   return (
@@ -23,7 +25,7 @@ export function StatusPill({ status, size = "md", className }: StatusPillProps) 
       style={{ color: v.fg, background: v.bg }}
     >
       <span aria-hidden className="size-2 rounded-full" style={{ background: v.fg }} />
-      {statusLabel(p)}
+      {label ?? statusLabel(p)}
     </span>
   );
 }

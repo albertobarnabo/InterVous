@@ -5,7 +5,7 @@
 // above the row's link.
 import { Trash2 } from "lucide-react";
 import Link from "next/link";
-import { Button, ButtonLink, CompanyMark, IconButton, StatusPill, cx } from "@/ui";
+import { Button, ButtonLink, CompanyMark, IconButton, StatusPill, WAITING_FOR_RESULT, cx } from "@/ui";
 import type { AppItem } from "./model";
 
 export type RowHandlers = {
@@ -70,7 +70,7 @@ export function AppRow({ item, h }: { item: AppItem; h: RowHandlers }) {
 
       {/* Status: under the name on phones, its own column from 768px */}
       <div className="col-start-2 row-start-2 flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1 md:col-start-3 md:row-start-1">
-        <StatusPill status={item.phase} size="sm" />
+        <StatusPill status={item.awaiting ? "applied" : item.phase} label={item.awaiting ? WAITING_FOR_RESULT : undefined} size="sm" />
         {item.detail ? <span className="iv-num text-small text-ink-2">{item.detail}</span> : null}
       </div>
 

@@ -8,7 +8,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { deleteApplication, useApplication, useSettings, wasDeleted } from "../../../lib/data";
-import { Button, ButtonLink, CompanyMark, ConfirmDialog, Skeleton, cx, useToast } from "@/ui";
+import { Button, ButtonLink, CompanyMark, ConfirmDialog, Skeleton, WAITING_FOR_RESULT, cx, useToast } from "@/ui";
 import { leftoverText } from "../applications/model";
 import { CompanyPicker } from "@/app/(app)/companies/_components/CompanyPicker";
 import { LogoDialog } from "@/app/(app)/companies/_components/LogoDialog";
@@ -20,7 +20,7 @@ import { History } from "./History";
 import { JobDescription } from "./JobDescription";
 import { useDossierModel, type DossierModel } from "./model";
 import { Notes } from "./Notes";
-import { nextStep, waitingLabel } from "./status";
+import { nextStep, statusDetail } from "./status";
 import { WhatHappened } from "./WhatHappened";
 
 function Frame({ children }: { children: ReactNode }) {
@@ -67,7 +67,7 @@ function Summary({ model }: { model: DossierModel }) {
   const name = company?.name ?? app.company_name ?? "Company not recorded";
   const [picker, setPicker] = useState(false);
   const [logo, setLogo] = useState(false);
-  const waiting = waitingLabel(d);
+  const waiting = statusDetail(d, today);
   const step = nextStep(d, model.settings, today);
   const facts = [
     app.location?.trim() || null,
@@ -135,7 +135,7 @@ function Summary({ model }: { model: DossierModel }) {
       </div>
 
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        <StatusPill phase={d.phase} />
+        <StatusPill phase={d.awaitingResult ? "applied" : d.phase} label={d.awaitingResult ? WAITING_FOR_RESULT : undefined} />
         {waiting ? <span className="text-[15px] text-ink-2">{waiting}</span> : null}
       </div>
 

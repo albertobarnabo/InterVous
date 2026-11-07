@@ -77,7 +77,7 @@ export { Callout } from "./Callout";
 export type { CalloutProps } from "./Callout";
 export { StatusPill, PhasePill, PhaseDot } from "./PhasePill";
 export type { StatusPillProps, PhasePillProps, PhaseDotProps } from "./PhasePill";
-export { STATUS_LABEL, statusLabel, statusVars, PHASE_LABEL, phaseLabel, phaseVars } from "./phase";
+export { STATUS_LABEL, statusLabel, statusVars, PHASE_LABEL, phaseLabel, phaseVars, WAITING_FOR_RESULT } from "./phase";
 export { CompanyMark, Logo, initials } from "./CompanyMark";
 export type { CompanyMarkProps, LogoProps } from "./CompanyMark";
 export { DotStrip, DOT_STATE_LABEL } from "./DotStrip";

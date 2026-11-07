@@ -17,6 +17,12 @@ export const STATUS_LABEL: Readonly<Record<Phase, string>> = Object.freeze({
   skipped: "Not applying",
 });
 
+/**
+ * An interview that has happened, with nothing booked after it: shown on the waiting status's colours
+ * with these words (lib/core derive.mjs `awaitingResult`).
+ */
+export const WAITING_FOR_RESULT = "Waiting for result";
+
 /** The plain label for a status id; unknown values pass through, null/undefined give "Not sent". */
 export function statusLabel(p: Phase | string | null | undefined): string {
   if (p == null) return STATUS_LABEL.draft;

@@ -198,6 +198,31 @@ function StageRow({
   );
 }
 
+type KindRow = AnalyticsResult["byType"][number];
+
+/** One kind of interview: how often you went further after it, with the rounds behind the percentage. */
+function KindRow({ row }: { row: KindRow }) {
+  const extra = [row.waiting ? `${row.waiting} waiting` : null, row.withdrew ? `${row.withdrew} withdrawn` : null].filter(Boolean).join(" · ");
+  return (
+    <li className="flex flex-col gap-1.5 py-2">
+      <p className="flex flex-wrap items-baseline gap-x-2 text-small text-ink">
+        <span className="font-semibold">{row.label}</span>
+        {row.percent ? (
+          <>
+            <span className="iv-num font-semibold">{row.percent}</span>
+            <span>went further</span>
+            <span className="iv-num text-ink-2">{`(${row.passed} of ${row.decided})`}</span>
+          </>
+        ) : (
+          <span className="text-ink-2">No outcome yet</span>
+        )}
+        {extra ? <span className="text-ink-3">{`· ${extra}`}</span> : null}
+      </p>
+      <Dots passed={row.passed} stopped={row.stopped} />
+    </li>
+  );
+}
+
 export function Analytics({ input }: { input: CoreInput }) {
   const [scope, setScope] = useState<Scope>(readScope);
   const a = useMemo(
@@ -295,6 +320,26 @@ export function Analytics({ input }: { input: CoreInput }) {
               {a.smallNote || a.unloggedNote ? (
                 <p className="text-caption text-ink-3">
                   {[a.smallNote, a.unloggedNote].filter(Boolean).join(" ")}
+                </p>
+              ) : null}
+            </Card>
+          ) : null}
+
+          {a.byType.length || a.untyped ? (
+            <Card title="By kind of interview" how={a.howCounted}>
+              {a.byTypeLine ? <p className="text-small break-words text-ink-2">{a.byTypeLine}</p> : null}
+              {a.byType.length ? (
+                <ul aria-label="How often you went further after each kind of interview" className="divide-y divide-ink/[0.06]">
+                  {a.byType.map((row) => (
+                    <KindRow key={row.id} row={row} />
+                  ))}
+                </ul>
+              ) : null}
+              {a.byType.some((row) => row.small) || a.untypedNote ? (
+                <p className="text-caption text-ink-3">
+                  {[a.byType.some((row) => row.small) ? "A percentage from fewer than 20 outcomes can still move a lot with the next one." : null, a.untypedNote]
+                    .filter(Boolean)
+                    .join(" ")}
                 </p>
               ) : null}
             </Card>

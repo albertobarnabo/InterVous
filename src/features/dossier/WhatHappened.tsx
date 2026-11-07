@@ -3,10 +3,12 @@
 // Offer · No reply). Each logs the event, the database moves the status, and the toast offers Undo.
 import { CalendarClock, CircleX, Hourglass, MessageSquareReply, Send, Trophy, type LucideIcon } from "lucide-react";
 import { useState, type FormEvent } from "react";
+import { interviewTypeLabel, type InterviewType } from "../../../lib/core";
 import { recordUpdate, type NewEvent } from "../../../lib/data";
 import type { JobUpdate } from "../../../lib/data";
 import type { Phase } from "../../../lib/types";
 import { Button, DateInput, Field, Input, Popover, Textarea, cx, useToast } from "@/ui";
+import { InterviewTypePicker } from "../applications/InterviewTypePicker";
 import { shortDate } from "./format";
 import type { DossierModel } from "./model";
 
@@ -19,7 +21,7 @@ const BEFORE_INTERVIEW: Phase[] = ["draft", "skipped", "applied", "screening", "
 
 type Plan = { events: NewEvent[]; patch?: Pick<JobUpdate, "applied_on">; confirm: string[]; done: string };
 
-function plan(model: DossierModel, action: Action, date: string, time: string, note: string | null): Plan {
+function plan(model: DossierModel, action: Action, date: string, time: string, note: string | null, type: InterviewType | null): Plan {
   const { derived: d, today } = model;
   const phase = d.phase;
   const notSent = NOT_SENT.includes(phase);
@@ -50,12 +52,14 @@ function plan(model: DossierModel, action: Action, date: string, time: string, n
             kind: happened ? "interview_done" : "interview_scheduled",
             occurred_on: date,
             occurred_at,
+            // The kind of interview is the event's title (lib/core/interviews.mjs reads it back).
+            title: interviewTypeLabel(type),
             body: note,
             to_phase: BEFORE_INTERVIEW.includes(phase) ? "interviewing" : null,
           },
         ],
         confirm: ["phase"],
-        done: date > today ? `Interview on ${fmt(date)} saved.` : "Interview saved.",
+        done: `${interviewTypeLabel(type) ?? "Interview"}${date > today ? ` on ${fmt(date)}` : ""} saved.`,
       };
     }
     case "rejected":
@@ -71,8 +75,8 @@ function plan(model: DossierModel, action: Action, date: string, time: string, n
 
 function useRecord(model: DossierModel) {
   const toast = useToast();
-  return async (action: Action, date = model.today, time = "", note: string | null = null) => {
-    const p = plan(model, action, date, time, note);
+  return async (action: Action, date = model.today, time = "", note: string | null = null, type: InterviewType | null = null) => {
+    const p = plan(model, action, date, time, note, type);
     const res = await recordUpdate(model.app.id, { events: p.events, patch: p.patch, confirm: p.confirm });
     toast.show({
       text: p.done,
@@ -91,21 +95,24 @@ function useRecord(model: DossierModel) {
   };
 }
 
-/** Date (+ optional time) + optional note, then Save. */
+/** Date (+ optional time, + the kind of interview) + optional note, then Save. */
 function WhenForm({
   dateLabel,
   max,
   withTime,
+  withType,
   today,
   onSubmit,
 }: {
   dateLabel: string;
   max?: string;
   withTime?: boolean;
+  withType?: boolean;
   today: string;
-  onSubmit: (date: string, time: string, note: string | null) => Promise<void>;
+  onSubmit: (date: string, time: string, note: string | null, type: InterviewType | null) => Promise<void>;
 }) {
   const [date, setDate] = useState(today);
+  const [type, setType] = useState<InterviewType | null>(null);
   const [time, setTime] = useState("");
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
@@ -117,7 +124,7 @@ function WhenForm({
     setBusy(true);
     setError(null);
     try {
-      await onSubmit(date, time, note.trim() || null);
+      await onSubmit(date, time, note.trim() || null, type);
     } catch (err) {
       setError(err instanceof Error ? err.message : "It was not saved. Try again.");
       setBusy(false);
@@ -126,6 +133,7 @@ function WhenForm({
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-3">
+      {withType ? <InterviewTypePicker value={type} onChange={setType} /> : null}
       <div className="flex flex-wrap gap-3">
         <Field label={dateLabel}>
           <DateInput value={date} max={max} onChange={(e) => setDate(e.target.value)} required />
@@ -158,6 +166,7 @@ function AskButton({
   dateLabel,
   pastOnly,
   withTime,
+  withType,
   primary,
   model,
   action,
@@ -168,6 +177,7 @@ function AskButton({
   dateLabel: string;
   pastOnly?: boolean;
   withTime?: boolean;
+  withType?: boolean;
   primary?: boolean;
   model: DossierModel;
   action: Action;
@@ -189,9 +199,10 @@ function AskButton({
           dateLabel={dateLabel}
           max={pastOnly ? model.today : undefined}
           withTime={withTime}
+          withType={withType}
           today={model.today}
-          onSubmit={async (date, time, note) => {
-            await record(action, date, time, note);
+          onSubmit={async (date, time, note, type) => {
+            await record(action, date, time, note, type);
             close();
           }}
         />
@@ -252,7 +263,7 @@ export function WhatHappened({ model, className }: { model: DossierModel; classN
         {phase !== "offer" ? (
           <AskButton model={model} action="reply" label="Got a reply" icon={MessageSquareReply} title="When did they reply?" dateLabel="Date" pastOnly />
         ) : null}
-        <AskButton model={model} action="interview" label="Interview" icon={CalendarClock} title="When is the interview?" dateLabel="Date" withTime />
+        <AskButton model={model} action="interview" label="Interview" icon={CalendarClock} title="When is the interview?" dateLabel="Date" withTime withType />
         {phase !== "rejected" ? (
           <AskButton model={model} action="rejected" label="Rejected" icon={CircleX} title="When did they say no?" dateLabel="Date" pastOnly />
         ) : null}

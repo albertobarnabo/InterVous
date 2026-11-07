@@ -5,7 +5,7 @@
 // the status the same way.
 import { CalendarClock, CircleX, Hourglass, MessageSquareReply, Send, Trophy, type LucideIcon } from 'lucide-react';
 import { useCallback } from 'react';
-import { formatShort, type Phase } from '../../../lib/core';
+import { formatShort, interviewTypeLabel, lowerFirst, type InterviewType, type Phase } from '../../../lib/core';
 import { recordUpdate, type NewEvent } from '../../../lib/data';
 import { useToast } from '@/ui';
 
@@ -54,7 +54,7 @@ export function choicesFor(phase: Phase): ChoiceInfo[] {
 
 type Plan = { events: NewEvent[]; patch?: { applied_on: string }; confirm: string[]; done: string };
 
-function plan(phase: Phase, choice: UpdateChoice, date: string, today: string): Plan {
+function plan(phase: Phase, choice: UpdateChoice, date: string, today: string, type: InterviewType | null = null): Plan {
     const sentFirst: NewEvent[] = NOT_SENT.includes(phase) ? [{ kind: 'applied', occurred_on: date }] : [];
     switch (choice) {
         case 'reply':
@@ -66,13 +66,16 @@ function plan(phase: Phase, choice: UpdateChoice, date: string, today: string): 
         case 'interview':
         case 'interview_done': {
             const done = choice === 'interview_done' || (date <= today && phase === 'interviewing');
+            // The kind of interview is the event's title (lib/core/interviews.mjs reads it back).
+            const title = interviewTypeLabel(type);
+            const what = title ? lowerFirst(title) : 'interview';
             return {
                 events: [
                     ...sentFirst,
-                    { kind: done ? 'interview_done' : 'interview_scheduled', occurred_on: date, to_phase: BEFORE_INTERVIEW.includes(phase) ? 'interviewing' : null },
+                    { kind: done ? 'interview_done' : 'interview_scheduled', occurred_on: date, title, to_phase: BEFORE_INTERVIEW.includes(phase) ? 'interviewing' : null },
                 ],
                 confirm: ['phase'],
-                done: done ? 'interview done, waiting to hear' : date > today ? `interview on ${formatShort(date, { today })}` : 'interview',
+                done: done ? `${what} done, waiting to hear` : date > today ? `${what} on ${formatShort(date, { today })}` : what,
             };
         }
         case 'rejected':
@@ -114,10 +117,10 @@ export function useUpdates() {
         [toast],
     );
 
-    /** "What happened?": one choice and its date. */
+    /** "What happened?": one choice and its date, and for an interview its kind. */
     const record = useCallback(
-        async (t: Target, choice: UpdateChoice, date: string, today: string) => {
-            const p = plan(t.phase, choice, date, today);
+        async (t: Target, choice: UpdateChoice, date: string, today: string, type: InterviewType | null = null) => {
+            const p = plan(t.phase, choice, date, today, type);
             const res = await recordUpdate(t.id, { events: p.events, patch: p.patch, confirm: p.confirm });
             withUndo(`Saved: ${t.company}, ${p.done}.`, res.undo);
         },

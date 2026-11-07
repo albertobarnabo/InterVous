@@ -53,7 +53,14 @@ function useSearch(urlQ: string, update: (patch: { q: string }) => void) {
   return [q, setQ] as const;
 }
 
-const toTarget = (it: AppItem): DialogTarget => ({ id: it.id, company: it.company, role: it.role, phase: it.phase, logoUrl: it.logoUrl });
+const toTarget = (it: AppItem): DialogTarget => ({
+  id: it.id,
+  company: it.company,
+  role: it.role,
+  phase: it.phase,
+  logoUrl: it.logoUrl,
+  awaitedInterviewOn: it.awaiting ? it.d.lastInterviewOn : null,
+});
 
 /** Where the keyboard goes when a row leaves: the next row, else the previous one, else the search box. */
 function neighbourOf(id: number): number | "search" {

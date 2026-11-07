@@ -1,6 +1,6 @@
 // Plain words for where an application stands, and the one "next step" sentence of the
 // application page. Shared by the application page, /companies and /settings.
-import { addDays, daysBetween, formatShort } from "../../../lib/core";
+import { addDays, daysBetween, formatShort, stageReached } from "../../../lib/core";
 import type { Derived } from "../../../lib/core";
 import type { JobEvent, UserSettings } from "../../../lib/data";
 import type { Phase } from "../../../lib/types";
@@ -32,6 +32,13 @@ export function ago(days: number): string {
 export function waitingLabel(d: Derived): string | null {
   if (d.phase !== "applied" || d.responded || d.silenceDays === null || d.silenceDays < 1) return null;
   return `Waiting ${d.silenceDays} ${d.silenceDays === 1 ? "day" : "days"}`;
+}
+
+/** The fact beside the status pill: where a rejection came, when the awaited interview was, or the wait. */
+export function statusDetail(d: Derived, today: string): string | null {
+  if (d.phase === "rejected") return stageReached(d, today).label;
+  if (d.awaitingResult) return `Interview ${formatShort(d.lastInterviewOn, { today })}`;
+  return waitingLabel(d);
 }
 
 const DONE_TITLES = new Set([

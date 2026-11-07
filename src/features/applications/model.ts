@@ -10,7 +10,8 @@ import {
   formatDay,
   formatShort,
   phaseChangedOn,
-  phaseGroup,
+  stageReached,
+  statusGroupOf,
   toDateOnly,
   type Derived,
   type JobEvent as CoreEvent,
@@ -39,8 +40,10 @@ export type AppItem = {
   role: string;
   location: string | null;
   logoUrl: string | null;
-  /** A short plain fact next to the status: "Waiting 17 days", "Interview tomorrow", "CV made 11 Oct". */
+  /** A short plain fact next to the status: "Waiting 17 days", "Interview tomorrow", "Technical interview". */
   detail: string | null;
+  /** The interview has happened and nothing is booked after it: shown as waiting for the result. */
+  awaiting: boolean;
   action: RowAction;
   /** Sort key inside the group (bigger first). */
   sortOn: string | number | null;
@@ -56,6 +59,7 @@ function detailFor(d: Derived, today: string): string | null {
     case "screening":
       return d.silenceDays !== null && d.silenceDays > 0 ? `Waiting ${days(d.silenceDays)}` : d.appliedOn ? `Sent ${fmt(d.appliedOn)}` : null;
     case "interviewing": {
+      if (d.awaitingResult) return `Interview ${fmt(d.lastInterviewOn)}`;
       if (!d.nextInterviewOn) return null;
       const ahead = daysBetween(today, d.nextInterviewOn) ?? 0;
       return ahead === 0 ? "Interview today" : ahead === 1 ? "Interview tomorrow" : `Interview ${formatDay(d.nextInterviewOn)}`;
@@ -69,6 +73,9 @@ function detailFor(d: Derived, today: string): string | null {
       }
       return d.cvBuiltOn ? `CV made ${fmt(d.cvBuiltOn)}` : null;
     }
+    case "rejected":
+      // Where it stopped: "Screening", "Technical interview", "2nd interview".
+      return stageReached(d, today).label;
     default:
       return null;
   }
@@ -80,13 +87,13 @@ function actionFor(phase: Phase): RowAction {
   return "open";
 }
 
-function sortKey(d: Derived, group: StatusGroupId): string | number | null {
+function sortKey(d: Derived, group: StatusGroupId, today: string): string | number | null {
   switch (group) {
     case "interviews":
       return d.nextInterviewOn ?? d.lastEventOn ?? d.appliedOn;
     case "waiting":
-      // Longest wait first; undated rows last.
-      return d.silenceDays;
+      // Longest wait first; undated rows last. A result is awaited since the interview, not since sending.
+      return d.awaitingResult && d.lastInterviewOn ? daysBetween(d.lastInterviewOn, today) : d.silenceDays;
     case "not_sent":
       return d.cvBuiltOn ?? d.windowDate;
     case "closed":
@@ -107,7 +114,7 @@ export function buildItems(apps: Application[], settings: UserSettings | undefin
     const company = d.company || "Unknown company";
     const role = d.role || "Untitled role";
     const location = app.location?.trim() || null;
-    const group = phaseGroup(d.phase) as StatusGroupId;
+    const group = statusGroupOf(d) as StatusGroupId;
     return {
       id: d.id,
       ref: appRef({ id: d.id, slug: d.slug }),
@@ -121,8 +128,9 @@ export function buildItems(apps: Application[], settings: UserSettings | undefin
       location,
       logoUrl: app.company_logo_url,
       detail: detailFor(d, today),
+      awaiting: d.awaitingResult,
       action: actionFor(d.phase as Phase),
-      sortOn: sortKey(d, group),
+      sortOn: sortKey(d, group, today),
       haystack: [company, role, d.slug, location].filter(Boolean).join(" ").toLowerCase(),
     };
   });
