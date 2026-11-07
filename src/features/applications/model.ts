@@ -10,6 +10,8 @@ import {
   formatDay,
   formatShort,
   phaseChangedOn,
+  INTERVIEW_TYPES,
+  lowerFirst,
   stageReached,
   statusGroupOf,
   toDateOnly,
@@ -44,6 +46,8 @@ export type AppItem = {
   detail: string | null;
   /** The interview has happened and nothing is booked after it: shown as waiting for the result. */
   awaiting: boolean;
+  /** Why a closed application closed, as a filter of the Closed group; null for the other groups. */
+  closedReason: ClosedReason | null;
   action: RowAction;
   /** Sort key inside the group (bigger first). */
   sortOn: string | number | null;
@@ -129,6 +133,7 @@ export function buildItems(apps: Application[], settings: UserSettings | undefin
       logoUrl: app.company_logo_url,
       detail: detailFor(d, today),
       awaiting: d.awaitingResult,
+      closedReason: group === "closed" ? closedReasonOf(d, today) : null,
       action: actionFor(d.phase as Phase),
       sortOn: sortKey(d, group, today),
       haystack: [company, role, d.slug, location].filter(Boolean).join(" ").toLowerCase(),
@@ -142,6 +147,79 @@ const desc = (a: string | number | null, b: string | number | null) => {
   if (b == null) return -1;
   return a < b ? 1 : a > b ? -1 : 0;
 };
+
+// ── closed ──────────────────────────────────────────────────────────────────
+
+/** Closed rows shown at a time. */
+export const CLOSED_PAGE_SIZE = 10;
+
+export type ClosedReason = { id: string; label: string; order: number };
+
+/**
+ * Why a closed application closed: the outcome, and for a rejection the stage it stopped at, so
+ * "Rejected at screening" and "Rejected after technical interview" can be told apart. Ordered from the
+ * earliest stage to the latest, then the other outcomes.
+ */
+export function closedReasonOf(d: Derived, today: string): ClosedReason | null {
+  switch (d.phase) {
+    case "rejected": {
+      const stage = stageReached(d, today);
+      const kind = INTERVIEW_TYPES.findIndex((t) => t.id === stage.type);
+      // Screening, a test, an interview of unknown kind (by round), then the kinds in picker order.
+      const order =
+        stage.label === "Screening" ? 0 : stage.label === "Assessment" ? 1 : kind >= 0 ? 50 + kind : stage.rounds ? 2 + stage.rounds : 2;
+      const label =
+        stage.label === "Screening"
+          ? "Rejected at screening"
+          : `Rejected after ${stage.label === "Interview" ? "an interview" : lowerFirst(stage.label)}`;
+      return { id: `rejected-${stage.label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`, label, order };
+    }
+    case "no_reply":
+      return { id: "no_reply", label: "No reply", order: 100 };
+    case "withdrawn":
+      return { id: "withdrawn", label: "Withdrawn", order: 101 };
+    case "skipped":
+      return { id: "skipped", label: "Not applying", order: 102 };
+    default:
+      return null;
+  }
+}
+
+/** The reasons present among some closed rows, with how many each, in stage order. */
+export function closedReasons(items: AppItem[]): Array<ClosedReason & { count: number }> {
+  const byId = new Map<string, ClosedReason & { count: number }>();
+  for (const it of items) {
+    const r = it.closedReason;
+    if (!r) continue;
+    const e = byId.get(r.id) ?? { ...r, count: 0 };
+    e.count += 1;
+    byId.set(r.id, e);
+  }
+  return [...byId.values()].sort((a, b) => a.order - b.order || a.label.localeCompare(b.label));
+}
+
+/**
+ * What the Closed group shows: the reasons as chips, the rows of the chosen one, and the page. A reason
+ * no row has any more (after a search, or a delete) shows them all.
+ */
+export function closedView(items: AppItem[], why: string, page: number) {
+  const reasons = closedReasons(items);
+  const active = reasons.some((r) => r.id === why) ? why : "";
+  const filtered = active ? items.filter((it) => it.closedReason?.id === active) : items;
+  return { reasons, active, filtered, page: paginate(filtered, page) };
+}
+
+export type Page<T> = { items: T[]; page: number; pages: number; from: number; to: number; total: number };
+
+/** One page of rows. A page past the end shows the last one, so a stale ?page= never shows nothing. */
+export function paginate<T>(items: T[], page: number, size = CLOSED_PAGE_SIZE): Page<T> {
+  const total = items.length;
+  const pages = Math.max(1, Math.ceil(total / size));
+  const p = Math.min(Math.max(1, Math.floor(page) || 1), pages);
+  const start = (p - 1) * size;
+  const slice = items.slice(start, start + size);
+  return { items: slice, page: p, pages, from: total ? start + 1 : 0, to: start + slice.length, total };
+}
 
 // ── delete ──────────────────────────────────────────────────────────────────
 

@@ -94,7 +94,7 @@ Replies so far   ●○○○○○  1 of 6 old enough to judge  ·  4 too recen
   1. **In interviews** (interviewing, offer)
   2. **Waiting** (applied, screening), longest wait first. Each row has a thin age bar on a 0–60 day scale, with ticks at 21 days ("old enough to judge") and 45 days ("likely closed").
   3. **Not sent** (draft), newest CV first
-  4. **Closed** (rejected, no reply, withdrawn, skipped), collapsed by default
+  4. **Closed** (rejected, no reply, withdrawn, skipped), ten rows a page with Previous and Next. Chips above the rows filter by why they closed, with a count each: "Rejected at screening", "Rejected after technical interview" (the stage from `stageReached` in `lib/core/interviews.mjs`), "No reply", "Withdrawn", "Not applying". The chip and the page live in the URL (`?why=rejected-screening&page=2`); a new search, view or chip starts again from page 1.
   5. **Older records**: rows applied before `campaign_start` (2026-08-01), collapsed, with the label "From the old tracker, incomplete"
 - **Rows** are 64px tall, and each one is a single `<a>` to the dossier. From left to right a row shows:
   - a 32px company mark

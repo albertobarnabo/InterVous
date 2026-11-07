@@ -22,7 +22,7 @@ import {
 import { deleteApplication } from "../../../lib/data";
 import { ApplicationList } from "./ApplicationList";
 import type { RowHandlers } from "./AppRow";
-import { deleteWarning, isDisposable, leftoverText, matchesQuery, showCounts, toGroups, type AppItem, type Show } from "./model";
+import { closedView, deleteWarning, isDisposable, leftoverText, matchesQuery, showCounts, toGroups, type AppItem, type Show } from "./model";
 import { SentDialog, UpdateDialog, type DialogTarget } from "./UpdateDialog";
 import { useApplicationItems } from "./useApplicationItems";
 import { useListState } from "./useListState";
@@ -62,12 +62,24 @@ const toTarget = (it: AppItem): DialogTarget => ({
   awaitedInterviewOn: it.awaiting ? it.d.lastInterviewOn : null,
 });
 
-/** Where the keyboard goes when a row leaves: the next row, else the previous one, else the search box. */
-function neighbourOf(id: number): number | "search" {
-  const links = [...document.querySelectorAll<HTMLElement>("[data-item-link]")];
-  const i = links.findIndex((l) => l.dataset.itemLink === String(id));
-  const next = links[i + 1] ?? links[i - 1];
-  return next ? Number(next.dataset.itemLink) : "search";
+/**
+ * Where the keyboard goes when a row leaves: the next row of its own list, else the previous one. A
+ * closed row alone on its page goes to the row before it in the closed list, which the page then shows.
+ * Only then another list, and with nothing left, the search box.
+ */
+function neighbourOf(id: number, closedRows: AppItem[]): number | "search" {
+  const at = (links: HTMLElement[]) => {
+    const i = links.findIndex((l) => l.dataset.itemLink === String(id));
+    return i < 0 ? null : (links[i + 1] ?? links[i - 1] ?? null);
+  };
+  const list = document.querySelector(`[data-item-id="${id}"]`)?.closest("ul");
+  const own = list ? at([...list.querySelectorAll<HTMLElement>("[data-item-link]")]) : null;
+  if (own) return Number(own.dataset.itemLink);
+  const j = closedRows.findIndex((it) => it.id === id);
+  const closedNext = j < 0 ? null : (closedRows[j - 1] ?? closedRows[j + 1] ?? null);
+  if (closedNext) return closedNext.id;
+  const any = at([...document.querySelectorAll<HTMLElement>("[data-item-link]")]);
+  return any ? Number(any.dataset.itemLink) : "search";
 }
 
 function focusRow(want: number | "search") {
@@ -123,6 +135,12 @@ export function ApplicationsScreen() {
   const counts = useMemo(() => showCounts(searched), [searched]);
   const shown = useMemo(() => (state.show === "all" ? searched : searched.filter((it) => it.group === state.show)), [searched, state.show]);
   const groups = useMemo(() => toGroups(shown), [shown]);
+  // A search typed but not yet in the URL already starts again from the first page.
+  const closedPage = q.trim() === state.q ? state.page : 1;
+  const closedRows = useMemo(
+    () => closedView(groups.find((g) => g.id === "closed")?.items ?? [], state.why, closedPage).filtered,
+    [groups, state.why, closedPage],
+  );
 
   const options = useMemo(
     () => [
@@ -138,7 +156,7 @@ export function ApplicationsScreen() {
     onDelete: (it) => {
       if (tooSoon()) return;
       const byKeyboard = usingKeyboard();
-      const focus = byKeyboard ? neighbourOf(it.id) : null;
+      const focus = byKeyboard ? neighbourOf(it.id, closedRows) : null;
       if (!isDisposable(it)) {
         focusAfterDialog.current = focus;
         setDeleteFor(it);
@@ -274,7 +292,7 @@ export function ApplicationsScreen() {
                 <Button
                   onClick={() => {
                     setQ("");
-                    update({ q: "", show: "all" });
+                    update({ q: "", show: "all", why: "" });
                   }}
                 >
                   Show all applications
@@ -282,7 +300,12 @@ export function ApplicationsScreen() {
               }
             />
           ) : (
-            <ApplicationList groups={groups} grouped={state.show === "all"} h={handlers} />
+            <ApplicationList
+              groups={groups}
+              grouped={state.show === "all"}
+              h={handlers}
+              closed={{ why: state.why, page: closedPage, onChange: update }}
+            />
           )}
         </div>
       </div>
