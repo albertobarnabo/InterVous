@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getUserAndKeys } from '../../../../lib/backend/serverKeys';
-import { isJobBoardUrl, linkFrom } from '../../../../lib/core';
+import { companyCore, employerFromJobBoard, isJobBoardUrl, linkFrom, nameFromAnswer, nameFromSite } from '../../../../lib/core';
 
 const TAVILY_URL = 'https://api.tavily.com/search';
 
@@ -114,15 +114,15 @@ async function findLogo(domain: string): Promise<string | null> {
 
 /*
  * The careers website (the one on record, else asked to Tavily) and the logo; never fails the whole
- * auto-fill. The logo comes from the careers site's domain, unless that is a job board such as
- * jobs.lever.co: then from the company's own site, asked to Tavily.
+ * auto-fill. The logo comes from the company's own site when it was given, else the careers site's
+ * domain, unless that is a job board such as jobs.lever.co: then from its own site, asked to Tavily.
  */
-async function careersAndLogo(apiKey: string, subject: string, saved: string) {
+async function careersAndLogo(apiKey: string, subject: string, saved: string, homepage: string | null) {
     try {
         const careers =
             linkFrom(saved) ??
             linkFrom(await tavilyAnswer(apiKey, `What is the URL of the careers page where ${subject} lists its open jobs? Answer with the full URL only.`));
-        let domain = careers && !isJobBoardUrl(careers) ? cleanDomain(careers) : null;
+        let domain = homepage ? cleanDomain(homepage) : careers && !isJobBoardUrl(careers) ? cleanDomain(careers) : null;
         if (!domain) {
             const answer = await tavilyAnswer(apiKey, `What is the official website of ${subject}? Answer with the domain only, e.g. example.com.`);
             domain = cleanDomain(answer);
@@ -136,17 +136,34 @@ async function careersAndLogo(apiKey: string, subject: string, saved: string) {
 
 export async function POST(req: Request) {
     try {
-        let body: { companyName?: unknown; website?: unknown };
+        let body: { companyName?: unknown; website?: unknown; homepage?: unknown };
         try {
             body = await req.json();
         } catch {
             return NextResponse.json({ error: 'The request was not valid JSON.' }, { status: 400 });
         }
-        const companyName = typeof body.companyName === 'string' ? body.companyName.trim().slice(0, 200) : '';
-        const website = typeof body.website === 'string' ? body.website.trim().slice(0, 300) : '';
+        let companyName = typeof body.companyName === 'string' ? body.companyName.trim().slice(0, 200) : '';
+        // `website` is the careers website on record; `homepage` is the company's own site, given
+        // instead of a name ("https://www.elastic.co/") when a company is added from its website.
+        let website = typeof body.website === 'string' ? body.website.trim().slice(0, 300) : '';
+        let homepage = typeof body.homepage === 'string' ? linkFrom(body.homepage.trim().slice(0, 300)) : null;
 
-        if (!companyName) {
-            return NextResponse.json({ error: 'Add the company name first.' }, { status: 400 });
+        if (!companyName && !homepage) {
+            return NextResponse.json({ error: 'Add a website or the company name first.' }, { status: 400 });
+        }
+        // A job-board link (jobs.lever.co/acme, linkedin.com/company/acme) is not the company's site: its
+        // owner is the board. Take the employer it names, and the board page as its careers website.
+        if (homepage && isJobBoardUrl(homepage)) {
+            const board = employerFromJobBoard(homepage);
+            if (!board && !companyName) {
+                return NextResponse.json(
+                    { error: "That is a job board link. Paste the company's own website, or type its name." },
+                    { status: 400 }
+                );
+            }
+            if (board && !companyName) companyName = board.name;
+            if (board?.careers && !website) website = board.careers;
+            homepage = null;
         }
 
         // Tavily key is read server-side from the caller's account
@@ -162,7 +179,18 @@ export async function POST(req: Request) {
             );
         }
 
-        const site = website ? ` (careers website: ${website})` : '';
+        const host = homepage ? new URL(homepage).hostname.replace(/^www\./, '') : null;
+        if (!companyName && host) {
+            // From the website alone: its owner's name first, since every other question names the company.
+            // Without its legal form ("Elastic", not "Elastic N.V."), the way companies are usually written.
+            companyName = companyCore(
+                nameFromAnswer(await tavilyAnswer(apiKey, `What is the name of the company whose official website is ${host}? Answer with the company name only.`)) ??
+                    nameFromSite(homepage) ??
+                    host
+            );
+        }
+
+        const site = website ? ` (careers website: ${website})` : host ? ` (website: ${host})` : '';
         const subject = `the company "${companyName}"${site}`;
 
         const [description, industry, headquarters, founded, employee_count, found] =
@@ -172,10 +200,11 @@ export async function POST(req: Request) {
                 tavilyAnswer(apiKey, `Where is ${subject} headquartered? Answer with city and country only.`),
                 tavilyAnswer(apiKey, `In what year was ${subject} founded? Answer with the year only.`),
                 tavilyAnswer(apiKey, `Approximately how many employees does ${subject} have? Answer briefly, e.g. "about 5,000".`),
-                careersAndLogo(apiKey, subject, website),
+                careersAndLogo(apiKey, subject, website, homepage),
             ]);
 
         return NextResponse.json({
+            name: companyName,
             description,
             industry,
             headquarters,

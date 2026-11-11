@@ -336,13 +336,14 @@ export default function CompaniesView() {
       />
 
       <CompanyEditor
+        tavily={tavily}
         open={editor.open}
         company={editor.company}
         onClose={closeEditor}
-        onSaved={async (saved) => {
+        onSaved={async (saved, opts) => {
           const wasOpen = selected?.id === saved.id;
           closeEditor();
-          if (wasOpen) {
+          if (wasOpen || opts?.open) {
             const fresh = await getCompanyByName(saved.name).catch(() => null);
             if (fresh) {
               setSelected(fresh);

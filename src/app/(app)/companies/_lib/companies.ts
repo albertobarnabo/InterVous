@@ -15,11 +15,12 @@ import {
   updateCompanyTag as beUpdateTag,
 } from "../../../../../lib/backend/companies";
 import { getCompanyInfo as beGetInfo, upsertCompanyInfo as beUpsertInfo } from "../../../../../lib/backend/companyInfo";
-import { slugify } from "../../../../../lib/core";
+import { companyCore, slugify } from "../../../../../lib/core";
 import { refetchAll, removeCompanyLogo, setCompanyLogo } from "../../../../../lib/data";
 import { FIXTURE_MODE } from "../../../../../lib/data/env";
 import { loadFixture, type FixtureCompany } from "../../../../../lib/data/fixture";
 import { getKeysStatus as beKeysStatus, type KeysStatus } from "../../../../../lib/keyService";
+import { likeLiteral } from "../../../../../lib/data/client";
 import { supabase } from "../../../../../lib/supbaseClient";
 import type { CompanyInfo, CompanyTag, CompanyWithTags, SortOption } from "../../../../../lib/types";
 
@@ -149,6 +150,24 @@ export async function getCompanyByName(name: string): Promise<CompanyWithTags | 
   const s = await fixtureStore();
   const c = s.companies.find((x) => norm(x.name) === norm(name));
   return c ? withTags(s, c) : null;
+}
+
+/**
+ * A company with this name, whatever its capitals or legal form ("Elastic" finds "Elastic N.V."); null
+ * when there is none. Checked before adding one.
+ */
+export async function findCompanyByName(name: string): Promise<{ id: string; name: string } | null> {
+  const core = norm(companyCore(name));
+  if (!core) return null;
+  const same = (x: { name: string }) => norm(companyCore(x.name)) === core;
+  if (FIXTURE_MODE) {
+    const c = (await fixtureStore()).companies.find(same);
+    return c ? { id: c.id, name: c.name } : null;
+  }
+  // Every name that starts with the core, then the legal forms compared here.
+  const { data, error } = await supabase.from("companies").select("id,name").ilike("name", `${likeLiteral(companyCore(name).trim())}%`).limit(50);
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as { id: string; name: string }[]).find(same) ?? null;
 }
 
 /** Which of these names have a company record (case-insensitive). Used to find unlinked applications. */
@@ -334,20 +353,22 @@ export async function saveCompanyInfo(info: Omit<CompanyInfo, "updated_at" | "up
 }
 
 export type ResearchResult = Pick<CompanyInfo, "description" | "industry" | "headquarters" | "founded" | "employee_count"> & {
+  /** The company's name: the one asked about, or the one found from its website. */
+  name?: string;
   /** The careers website and an image link to the logo, when the search found them. */
   website?: string | null;
   logo_url?: string | null;
 };
 
 /** Tavily web search through /intervous/api/company-research. Errors carry the server's {error} text. */
-export async function researchCompany(company: Pick<CompanyWithTags, "name" | "website">): Promise<ResearchResult> {
+export async function researchCompany(company: { name?: string; website?: string | null; homepage?: string | null }): Promise<ResearchResult> {
   if (FIXTURE_MODE) throw new Error("Auto-fill searches the web with your Tavily key, so it is off in preview mode.");
   const { data } = await supabase.auth.getSession();
   if (!data.session) throw new Error("You are signed out. Sign in again to use Auto-fill.");
   return apiJson<ResearchResult>("company-research", {
     method: "POST",
     headers: { Authorization: `Bearer ${data.session.access_token}` },
-    body: JSON.stringify({ companyName: company.name, website: company.website }),
+    body: JSON.stringify({ companyName: company.name ?? "", website: company.website ?? "", homepage: company.homepage ?? "" }),
   });
 }
 

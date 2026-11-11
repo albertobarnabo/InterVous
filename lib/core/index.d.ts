@@ -314,6 +314,14 @@ export function escapeLike(s: string): string;
 export function isJobBoardUrl(url: string | null | undefined): boolean;
 /** The first public link in a piece of text, as an https URL without its query; null when there is none. */
 export function linkFrom(text: string | null | undefined): string | null;
+/** A company's name from its website: "elastic.co" → "Elastic". null when it is not a link. */
+export function nameFromSite(url: string | null | undefined): string | null;
+/** A company name out of a one-line answer, or null when it reads like a sentence or a refusal. */
+export function nameFromAnswer(text: string | null | undefined): string | null;
+/** A company's name without its legal form: "Elastic N.V." → "Elastic". */
+export function companyCore(name: string | null | undefined): string;
+/** The employer a job-board link names, with the board's careers page for it; null when it names none. */
+export function employerFromJobBoard(url: string | null | undefined): { name: string; careers: string | null } | null;
 
 // ===========================================================================
 // stats.mjs: the sample-size rule (spec 5.2), the only place it lives

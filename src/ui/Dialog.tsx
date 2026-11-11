@@ -29,7 +29,10 @@ export type DialogProps = {
 
 const widths = { sm: "max-w-sm", md: "max-w-lg", lg: "max-w-2xl" };
 
-/** Headless UI Dialog: focus trap, Esc, aria-modal, scroll lock. Fades and scales from 0.98 in 160ms. */
+/**
+ * Headless UI Dialog: focus trap, Esc, aria-modal, scroll lock. Fades and scales from 0.98 in 160ms.
+ * However long the content, the title and the buttons stay on screen and only the content scrolls.
+ */
 export function Dialog({ open, onClose, title, description, children, footer, size = "md", hideClose, className }: DialogProps) {
   return (
     <HDialog open={open} onClose={onClose} className="relative z-40">
@@ -41,21 +44,25 @@ export function Dialog({ open, onClose, title, description, children, footer, si
         <DialogPanel
           transition
           className={cx(
-            "iv-glass-thick relative w-full rounded-xl p-6 shadow-[0_0_0_0.5px_rgba(15,23,42,0.08),0_1px_0_rgba(255,255,255,0.9)_inset,0_24px_60px_rgba(15,23,42,0.22)] sm:p-7",
+            "iv-glass-thick relative flex max-h-[calc(100dvh-2rem)] w-full flex-col rounded-xl shadow-[0_0_0_0.5px_rgba(15,23,42,0.08),0_1px_0_rgba(255,255,255,0.9)_inset,0_24px_60px_rgba(15,23,42,0.22)]",
             "transition duration-[160ms] ease-out data-closed:scale-[0.98] data-closed:opacity-0 motion-reduce:data-closed:scale-100",
             widths[size],
             className,
           )}
         >
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex shrink-0 items-start justify-between gap-4 px-6 pt-6 sm:px-7 sm:pt-7">
             <div className="min-w-0">
               <DialogTitle className="text-h3 text-ink">{title}</DialogTitle>
               {description ? <Description className="mt-1 text-small text-ink-2">{description}</Description> : null}
             </div>
             {hideClose ? null : <IconButton label="Close" icon={X} size="sm" variant="secondary" onClick={onClose} className="-mr-1 -mt-0.5" />}
           </div>
-          {children ? <div className="mt-4">{children}</div> : null}
-          {footer ? <div className="mt-6 flex flex-wrap justify-end gap-2">{footer}</div> : null}
+          {/* The content scrolls on its own; its padding keeps focus rings inside the scroll area. */}
+          {/* relative: hidden labels (sr-only is absolute) belong to this scroller, not to the page's */}
+          <div className={cx("relative min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 sm:px-7", children ? "pt-4" : null, footer ? "pb-1" : "pb-6 sm:pb-7")}>
+            {children}
+          </div>
+          {footer ? <div className="flex shrink-0 flex-wrap justify-end gap-2 px-6 pt-5 pb-6 sm:px-7 sm:pb-7">{footer}</div> : null}
         </DialogPanel>
       </div>
     </HDialog>
